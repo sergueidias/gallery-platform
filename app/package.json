@@ -1,0 +1,13 @@
+{
+  "name": "gallery-platform-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal local Node.js server for gallery-platform",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
