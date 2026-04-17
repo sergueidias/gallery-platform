@@ -414,6 +414,61 @@ function resolveGalleryOperationalStatus(gallery) {
   return "ok";
 }
 
+function getCoverStatusMessage(status) {
+  switch (status) {
+    case "ok":
+      return "Capa ok";
+    case "error_missing_cover":
+      return "Capa ausente";
+    case "error_multiple_covers":
+      return "Capas em conflito";
+    case "error_cover_file_missing":
+      return "Arquivo da capa ausente";
+    default:
+      return "Status de capa desconhecido";
+  }
+}
+
+function getGalleryStatusMessage(status) {
+  switch (status) {
+    case "ok":
+      return "Import ok";
+    case "error_no_thumbnails":
+      return "Thumbnails ausentes";
+    case "error_no_large":
+      return "Imagens large ausentes";
+    case "error_no_images":
+      return "Sem imagens";
+    case "error_mismatch_files":
+      return "Arquivos inconsistentes";
+    default:
+      return "Status de import desconhecido";
+  }
+}
+
+function getGalleryOperationalStatusMessage(status) {
+  switch (status) {
+    case "ok":
+      return "Galeria ok";
+    case "error_missing_cover":
+      return "Capa ausente";
+    case "error_multiple_covers":
+      return "Capas em conflito";
+    case "error_cover_file_missing":
+      return "Capa indisponivel";
+    case "error_no_thumbnails":
+      return "Thumbnails ausentes";
+    case "error_no_large":
+      return "Large ausentes";
+    case "error_no_images":
+      return "Sem imagens";
+    case "error_mismatch_files":
+      return "Import inconsistente";
+    default:
+      return "Atencao operacional";
+  }
+}
+
 async function resolveGalleryCover(gallery, domainContext) {
   const metadataItems = await loadGalleryMetadata(gallery.slug);
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
@@ -536,11 +591,19 @@ async function buildGallerySummary(gallery, domainContext) {
       ...gallery,
       cover: coverResolution.cover,
       coverStatus: coverResolution.coverStatus,
+      coverStatusMessage: getCoverStatusMessage(coverResolution.coverStatus),
       galleryStatus: importValidation.galleryStatus,
+      galleryStatusMessage: getGalleryStatusMessage(importValidation.galleryStatus),
       galleryOperationalStatus: resolveGalleryOperationalStatus({
         galleryStatus: importValidation.galleryStatus,
         coverStatus: coverResolution.coverStatus
       }),
+      galleryOperationalStatusMessage: getGalleryOperationalStatusMessage(
+        resolveGalleryOperationalStatus({
+          galleryStatus: importValidation.galleryStatus,
+          coverStatus: coverResolution.coverStatus
+        })
+      ),
       imageCount: imageFiles.length,
       coverUrl: coverResolution.coverUrl,
       coverPublicName: coverResolution.coverPublicName,
@@ -552,11 +615,19 @@ async function buildGallerySummary(gallery, domainContext) {
       ...gallery,
       cover: null,
       coverStatus: "error_cover_file_missing",
+      coverStatusMessage: getCoverStatusMessage("error_cover_file_missing"),
       galleryStatus: "error_no_images",
+      galleryStatusMessage: getGalleryStatusMessage("error_no_images"),
       galleryOperationalStatus: resolveGalleryOperationalStatus({
         galleryStatus: "error_no_images",
         coverStatus: "error_cover_file_missing"
       }),
+      galleryOperationalStatusMessage: getGalleryOperationalStatusMessage(
+        resolveGalleryOperationalStatus({
+          galleryStatus: "error_no_images",
+          coverStatus: "error_cover_file_missing"
+        })
+      ),
       imageCount: 0,
       coverUrl: coverErrorAssetUrl,
       coverPublicName: buildCoverPublicName(gallery, domainContext),
@@ -581,11 +652,19 @@ async function buildGalleryDetail(gallery, domainContext) {
     ...gallery,
     cover: coverResolution.cover,
     coverStatus: coverResolution.coverStatus,
+    coverStatusMessage: getCoverStatusMessage(coverResolution.coverStatus),
     galleryStatus: importValidation.galleryStatus,
+    galleryStatusMessage: getGalleryStatusMessage(importValidation.galleryStatus),
     galleryOperationalStatus: resolveGalleryOperationalStatus({
       galleryStatus: importValidation.galleryStatus,
       coverStatus: coverResolution.coverStatus
     }),
+    galleryOperationalStatusMessage: getGalleryOperationalStatusMessage(
+      resolveGalleryOperationalStatus({
+        galleryStatus: importValidation.galleryStatus,
+        coverStatus: coverResolution.coverStatus
+      })
+    ),
     coverUrl: coverResolution.coverUrl,
     coverPublicName: coverResolution.coverPublicName,
     entryUrl: getEntryUrl(gallery),

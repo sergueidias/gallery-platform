@@ -37,7 +37,7 @@ function buildGalleryOperationalBadge(gallery) {
     return "";
   }
 
-  return '<span class="gallery-operational-badge" aria-label="Estado operacional com alerta">Atencao operacional</span>';
+  return `<span class="gallery-operational-badge" aria-label="Estado operacional com alerta">${gallery.galleryOperationalStatusMessage || "Atencao operacional"}</span>`;
 }
 
 function buildGalleryCard(gallery) {
