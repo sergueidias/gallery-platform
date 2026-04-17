@@ -948,12 +948,16 @@ async function handleApiRequest(requestUrl, response, domainContext) {
     const sortedPayload = sortGalleries(
       await Promise.all(galleries.map((gallery) => buildGallerySummary(gallery, domainContext)))
     );
+    const requestedSlug = String(requestUrl.searchParams.get("slug") || "").trim();
     const requestedStatus = String(requestUrl.searchParams.get("status") || "").trim().toLowerCase();
+    const slugFilteredPayload = requestedSlug
+      ? sortedPayload.filter((gallery) => gallery.slug === requestedSlug)
+      : sortedPayload;
     const payload = requestedStatus === "ok"
-      ? sortedPayload.filter((gallery) => gallery.galleryOperationalStatus === "ok")
+      ? slugFilteredPayload.filter((gallery) => gallery.galleryOperationalStatus === "ok")
       : requestedStatus === "error"
-        ? sortedPayload.filter((gallery) => gallery.galleryOperationalStatus !== "ok")
-        : sortedPayload;
+        ? slugFilteredPayload.filter((gallery) => gallery.galleryOperationalStatus !== "ok")
+        : slugFilteredPayload;
 
     sendJson(response, 200, {
       domain: {
