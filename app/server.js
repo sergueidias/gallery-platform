@@ -264,6 +264,99 @@ function getGalleryImagePaths(gallery) {
   };
 }
 
+async function readImageFileNames(directoryPath) {
+  try {
+    const entries = await fs.promises.readdir(directoryPath, { withFileTypes: true });
+
+    return entries
+      .filter((entry) => entry.isFile() && isImageFile(entry.name))
+      .map((entry) => entry.name)
+      .sort();
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+async function validateGalleryImport(gallery) {
+  const { thumbnailsDir, largeDir } = getGalleryImagePaths(gallery);
+  const [thumbnailFiles, largeFiles] = await Promise.all([
+    readImageFileNames(thumbnailsDir),
+    readImageFileNames(largeDir)
+  ]);
+
+  if (thumbnailFiles === null || thumbnailFiles.length === 0) {
+    if (largeFiles === null || largeFiles.length === 0) {
+      return {
+        galleryStatus: "error_no_images",
+        thumbnailFiles: thumbnailFiles || [],
+        largeFiles: largeFiles || [],
+        consistentFiles: []
+      };
+    }
+
+    return {
+      galleryStatus: "error_no_thumbnails",
+      thumbnailFiles: [],
+      largeFiles,
+      consistentFiles: []
+    };
+  }
+
+  if (largeFiles === null || largeFiles.length === 0) {
+    return {
+      galleryStatus: "error_no_large",
+      thumbnailFiles,
+      largeFiles: [],
+      consistentFiles: []
+    };
+  }
+
+  const largeFileSet = new Set(largeFiles);
+  const consistentFiles = thumbnailFiles.filter((fileName) => largeFileSet.has(fileName));
+
+  if (consistentFiles.length === 0 || consistentFiles.length !== thumbnailFiles.length || consistentFiles.length !== largeFiles.length) {
+    return {
+      galleryStatus: "error_mismatch_files",
+      thumbnailFiles,
+      largeFiles,
+      consistentFiles
+    };
+  }
+
+  return {
+    galleryStatus: "ok",
+    thumbnailFiles,
+    largeFiles,
+    consistentFiles
+  };
+}
+
+async function listConsistentImageFiles(sourcePath) {
+  const { thumbnailsDir, largeDir } = getGalleryImagePaths({ sourcePath });
+
+  const [thumbnailEntries, largeEntries] = await Promise.all([
+    fs.promises.readdir(thumbnailsDir, { withFileTypes: true }),
+    fs.promises.readdir(largeDir, { withFileTypes: true })
+  ]);
+
+  const thumbnailFiles = thumbnailEntries
+    .filter((entry) => entry.isFile() && isImageFile(entry.name))
+    .map((entry) => entry.name)
+    .sort();
+
+  const largeFiles = new Set(
+    largeEntries
+      .filter((entry) => entry.isFile() && isImageFile(entry.name))
+      .map((entry) => entry.name)
+  );
+
+  return thumbnailFiles.filter((fileName) => largeFiles.has(fileName));
+}
+
 function getGalleryMetadataFilePath(slug) {
   return path.join(galleryMetadataRoot, `${slug}.json`);
 }
@@ -311,8 +404,8 @@ function buildCoverPublicName(gallery, domainContext) {
 
 async function resolveGalleryCover(gallery, domainContext) {
   const metadataItems = await loadGalleryMetadata(gallery.slug);
-  const consistentFiles = await listConsistentImageFiles(gallery.sourcePath);
-  const consistentFileSet = new Set(consistentFiles);
+  const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
+  const consistentFileSet = new Set(imageFiles);
   const candidatesByKeyword = metadataItems.filter(matchesCoverKeyword);
 
   let candidates = candidatesByKeyword;
@@ -373,28 +466,6 @@ async function fileExists(filePath) {
   }
 }
 
-async function listConsistentImageFiles(sourcePath) {
-  const { thumbnailsDir, largeDir } = getGalleryImagePaths({ sourcePath });
-
-  const [thumbnailEntries, largeEntries] = await Promise.all([
-    fs.promises.readdir(thumbnailsDir, { withFileTypes: true }),
-    fs.promises.readdir(largeDir, { withFileTypes: true })
-  ]);
-
-  const thumbnailFiles = thumbnailEntries
-    .filter((entry) => entry.isFile() && isImageFile(entry.name))
-    .map((entry) => entry.name)
-    .sort();
-
-  const largeFiles = new Set(
-    largeEntries
-      .filter((entry) => entry.isFile() && isImageFile(entry.name))
-      .map((entry) => entry.name)
-  );
-
-  return thumbnailFiles.filter((fileName) => largeFiles.has(fileName));
-}
-
 async function loadGalleries() {
   return readJsonFile(galleriesFilePath);
 }
@@ -445,6 +516,7 @@ async function findGalleryBySlug(slug, domainContext) {
 
 async function buildGallerySummary(gallery, domainContext) {
   try {
+    const importValidation = await validateGalleryImport(gallery);
     const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
     const coverResolution = await resolveGalleryCover(gallery, domainContext);
 
@@ -452,6 +524,7 @@ async function buildGallerySummary(gallery, domainContext) {
       ...gallery,
       cover: coverResolution.cover,
       coverStatus: coverResolution.coverStatus,
+      galleryStatus: importValidation.galleryStatus,
       imageCount: imageFiles.length,
       coverUrl: coverResolution.coverUrl,
       coverPublicName: coverResolution.coverPublicName,
@@ -463,6 +536,7 @@ async function buildGallerySummary(gallery, domainContext) {
       ...gallery,
       cover: null,
       coverStatus: "error_cover_file_missing",
+      galleryStatus: "error_no_images",
       imageCount: 0,
       coverUrl: coverErrorAssetUrl,
       coverPublicName: buildCoverPublicName(gallery, domainContext),
@@ -473,6 +547,7 @@ async function buildGallerySummary(gallery, domainContext) {
 }
 
 async function buildGalleryDetail(gallery, domainContext) {
+  const importValidation = await validateGalleryImport(gallery);
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
   const coverResolution = await resolveGalleryCover(gallery, domainContext);
   const imageItems = imageFiles.map((fileName) => ({
@@ -486,6 +561,7 @@ async function buildGalleryDetail(gallery, domainContext) {
     ...gallery,
     cover: coverResolution.cover,
     coverStatus: coverResolution.coverStatus,
+    galleryStatus: importValidation.galleryStatus,
     coverUrl: coverResolution.coverUrl,
     coverPublicName: coverResolution.coverPublicName,
     entryUrl: getEntryUrl(gallery),

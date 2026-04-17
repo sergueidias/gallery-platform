@@ -260,6 +260,17 @@ img {
   white-space: nowrap;
 }
 
+.gallery-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(125, 87, 26, 0.14);
+  color: #7d571a;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
 .gallery-card--empty .cover-link,
 .gallery-card--loading .cover-link {
   cursor: default;

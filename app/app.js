@@ -24,6 +24,14 @@ function buildCoverStatusBadge(gallery) {
   return '<span class="cover-status-badge" aria-label="Capa com erro">Capa com erro</span>';
 }
 
+function buildGalleryStatusBadge(gallery) {
+  if (gallery.galleryStatus === "ok") {
+    return "";
+  }
+
+  return '<span class="gallery-status-badge" aria-label="Import com erro">Import com erro</span>';
+}
+
 function buildGalleryCard(gallery) {
   return `
     <article class="gallery-card">
@@ -39,6 +47,7 @@ function buildGalleryCard(gallery) {
           <span class="cover-title-row">
             <span class="cover-title">${gallery.title}</span>
             <span class="cover-badges">
+              ${buildGalleryStatusBadge(gallery)}
               ${buildCoverStatusBadge(gallery)}
               ${buildPrivacyBadge(gallery)}
             </span>
