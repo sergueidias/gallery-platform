@@ -34,6 +34,12 @@ Estrutura:
 - imagens fora do Git (armazenadas no servidor)
 - acesso privado com cookie temporário (sem query param)
 
+## Input oficial atual
+
+- LRcP e o formato oficial atual de ingestao
+- imagens ficam fora do Git
+- o sistema interpreta o export, nao usa o frontend do LRc
+
 ---
 
 ## Regras críticas
@@ -64,4 +70,3 @@ BLOCO 10 — sistema automático de CAPA
 - tratar erro (0 ou múltiplas)
 - aplicar fallback
 - refletir na vitrine e entrada da galeria
-
