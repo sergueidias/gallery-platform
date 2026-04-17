@@ -586,6 +586,33 @@ function filterGalleriesByCatalog(galleries, domainContext) {
   return galleries.filter((item) => item.catalog === domainContext.catalog);
 }
 
+function sortGalleries(galleries) {
+  return [...galleries].sort((left, right) => {
+    const leftPriority = left.galleryOperationalStatus === "ok" ? 0 : 1;
+    const rightPriority = right.galleryOperationalStatus === "ok" ? 0 : 1;
+
+    if (leftPriority !== rightPriority) {
+      return leftPriority - rightPriority;
+    }
+
+    const titleComparison = String(left.title || "").localeCompare(
+      String(right.title || ""),
+      "pt-BR",
+      { sensitivity: "base" }
+    );
+
+    if (titleComparison !== 0) {
+      return titleComparison;
+    }
+
+    return String(left.slug || "").localeCompare(
+      String(right.slug || ""),
+      "pt-BR",
+      { sensitivity: "base" }
+    );
+  });
+}
+
 function selectFallbackDomain(domains, galleries) {
   for (const domain of domains) {
     if (galleries.some((gallery) => gallery.catalog === domain.catalog)) {
@@ -918,7 +945,9 @@ function renderVitrineTemplate(domainContext) {
 async function handleApiRequest(requestUrl, response, domainContext) {
   if (requestUrl.pathname === "/api/galleries") {
     const galleries = filterGalleriesByCatalog(await loadGalleries(), domainContext);
-    const payload = await Promise.all(galleries.map((gallery) => buildGallerySummary(gallery, domainContext)));
+    const payload = sortGalleries(
+      await Promise.all(galleries.map((gallery) => buildGallerySummary(gallery, domainContext)))
+    );
 
     sendJson(response, 200, {
       domain: {
