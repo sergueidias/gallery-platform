@@ -15,7 +15,7 @@ const cssFilePath = path.join(appRoot, "styles.css");
 const indexFilePath = path.join(appRoot, "index.html");
 const appJsFilePath = path.join(appRoot, "app.js");
 const coverErrorAssetUrl = "/assets/cover-error.svg";
-const ACCESS_TOKEN_TTL_MS = 30 * 60 * 1000;
+const ACCESS_TOKEN_TTL_MS = 2 * 60 * 60 * 1000;
 const galleryAccessStore = new Map();
 
 function sendText(response, statusCode, body, contentType) {
@@ -192,11 +192,12 @@ function createGalleryAccess(gallery) {
   };
 }
 
-function buildGalleryAccessCookie(gallery, token) {
+function buildGalleryAccessCookie(gallery, token, expiresAt) {
   const cookieName = getGalleryAccessCookieName(gallery);
   const maxAge = Math.floor(ACCESS_TOKEN_TTL_MS / 1000);
+  const cookieValue = `${token}.${expiresAt}`;
 
-  return `${cookieName}=${encodeURIComponent(token)}; Max-Age=${maxAge}; Path=/gallery/${encodeURIComponent(gallery.slug)}; HttpOnly; SameSite=Lax`;
+  return `${cookieName}=${encodeURIComponent(cookieValue)}; Max-Age=${maxAge}; Path=/; HttpOnly; SameSite=Lax`;
 }
 
 function hasValidGalleryAccess(request, gallery) {
@@ -204,15 +205,25 @@ function hasValidGalleryAccess(request, gallery) {
 
   const cookieName = getGalleryAccessCookieName(gallery);
   const cookies = parseCookies(request);
-  const token = cookies[cookieName];
+  const cookieValue = cookies[cookieName];
 
-  if (!token) {
+  if (!cookieValue) {
+    return false;
+  }
+
+  const [token, rawExpiresAt] = String(cookieValue).split(".");
+  const cookieExpiresAt = Number(rawExpiresAt);
+
+  if (!token || !Number.isFinite(cookieExpiresAt) || cookieExpiresAt <= Date.now()) {
+    if (token) {
+      galleryAccessStore.delete(token);
+    }
     return false;
   }
 
   const access = galleryAccessStore.get(token);
 
-  if (!access || access.slug !== gallery.slug || access.expiresAt <= Date.now()) {
+  if (!access || access.slug !== gallery.slug || access.expiresAt !== cookieExpiresAt || access.expiresAt <= Date.now()) {
     galleryAccessStore.delete(token);
     return false;
   }
@@ -1112,7 +1123,7 @@ async function handleAccessRequest(requestUrl, request, response, domainContext)
 
   if (submittedPassword && submittedPassword === expectedPassword) {
     const access = createGalleryAccess(gallery);
-    const cookie = buildGalleryAccessCookie(gallery, access.token);
+    const cookie = buildGalleryAccessCookie(gallery, access.token, access.expiresAt);
 
     redirectWithHeaders(response, gallery.galleryUrl, {
       "Set-Cookie": cookie
