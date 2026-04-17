@@ -35,11 +35,21 @@ function sendJson(response, statusCode, payload) {
 }
 
 function logEvent(type, data) {
-  console.log(JSON.stringify({
-    type,
-    timestamp: new Date().toISOString(),
-    data
-  }));
+  try {
+    console.log(JSON.stringify({
+      type,
+      timestamp: new Date().toISOString(),
+      data
+    }));
+  } catch (error) {
+    console.log(JSON.stringify({
+      type: "log_error",
+      timestamp: new Date().toISOString(),
+      data: {
+        originalType: type
+      }
+    }));
+  }
 }
 
 function redirect(response, location) {
@@ -1092,7 +1102,6 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
       buildGallerySummary(gallery, domainContext),
       buildGalleryDetail(gallery, domainContext)
     ]);
-    const normalizedPaths = normalizeImportPaths(gallery);
     const accessStatus = !gallery.isPrivate
       ? "public"
       : hasValidGalleryAccess(request, gallery)
@@ -1103,16 +1112,8 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
       slug: gallery.slug
     });
     sendJson(response, 200, {
-      gallery: {
-        ...summary,
-        thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
-        largePathNormalized: normalizedPaths.largePathNormalized
-      },
-      detail: {
-        ...detail,
-        thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
-        largePathNormalized: normalizedPaths.largePathNormalized
-      },
+      gallery: summary,
+      detail,
       access: {
         isPrivate: gallery.isPrivate,
         status: accessStatus
