@@ -34,6 +34,14 @@ function sendJson(response, statusCode, payload) {
   );
 }
 
+function logEvent(type, data) {
+  console.log(JSON.stringify({
+    type,
+    timestamp: new Date().toISOString(),
+    data
+  }));
+}
+
 function redirect(response, location) {
   response.writeHead(302, {
     Location: location
@@ -1019,6 +1027,10 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
       }))
     };
 
+    logEvent("gallery_download", {
+      slug: gallery.slug,
+      total: imageFiles.length
+    });
     sendJson(response, 200, payload);
     return true;
   }
@@ -1047,6 +1059,10 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
         ? "authorized"
         : "unauthorized";
 
+    logEvent("gallery_access_attempt", {
+      slug: gallery.slug,
+      result: access
+    });
     sendJson(response, 200, {
       slug: gallery.slug,
       access
@@ -1083,6 +1099,9 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
         ? "authorized"
         : "unauthorized";
 
+    logEvent("manifest_request", {
+      slug: gallery.slug
+    });
     sendJson(response, 200, {
       gallery: {
         ...summary,
@@ -1170,6 +1189,9 @@ async function handlePageRequest(requestUrl, request, response, domainContext) {
     }
 
     const detail = await buildGalleryDetail(gallery, domainContext);
+    logEvent("gallery_view", {
+      slug: gallery.slug
+    });
     sendText(
       response,
       200,
