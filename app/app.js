@@ -32,6 +32,14 @@ function buildGalleryStatusBadge(gallery) {
   return '<span class="gallery-status-badge" aria-label="Import com erro">Import com erro</span>';
 }
 
+function buildGalleryIntegrityBadge(gallery) {
+  if (gallery.galleryIntegrityStatus === "ok") {
+    return "";
+  }
+
+  return '<span class="gallery-status-badge" aria-label="Slug duplicado no catalogo">Slug duplicado</span>';
+}
+
 function buildGalleryOperationalBadge(gallery) {
   if (gallery.galleryOperationalStatus === "ok") {
     return "";
@@ -55,6 +63,7 @@ function buildGalleryCard(gallery) {
           <span class="cover-title-row">
             <span class="cover-title">${gallery.title}</span>
             <span class="cover-badges">
+              ${buildGalleryIntegrityBadge(gallery)}
               ${buildGalleryOperationalBadge(gallery)}
               ${buildGalleryStatusBadge(gallery)}
               ${buildCoverStatusBadge(gallery)}

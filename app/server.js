@@ -483,6 +483,16 @@ function getGalleryOperationalStatusMessage(status) {
   }
 }
 
+function resolveGalleryIntegrityStatus(gallery, duplicateKeys) {
+  const integrityKey = `${gallery.catalog}::${gallery.slug}`;
+
+  if (duplicateKeys.has(integrityKey)) {
+    return "error_duplicate_slug";
+  }
+
+  return "ok";
+}
+
 async function resolveGalleryCover(gallery, domainContext) {
   const metadataItems = await loadGalleryMetadata(gallery.slug);
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
@@ -548,7 +558,24 @@ async function fileExists(filePath) {
 }
 
 async function loadGalleries() {
-  return readJsonFile(galleriesFilePath);
+  const galleries = await readJsonFile(galleriesFilePath);
+  const slugCounts = new Map();
+
+  for (const gallery of galleries) {
+    const integrityKey = `${gallery.catalog}::${gallery.slug}`;
+    slugCounts.set(integrityKey, (slugCounts.get(integrityKey) || 0) + 1);
+  }
+
+  const duplicateKeys = new Set(
+    Array.from(slugCounts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([integrityKey]) => integrityKey)
+  );
+
+  return galleries.map((gallery) => ({
+    ...gallery,
+    galleryIntegrityStatus: resolveGalleryIntegrityStatus(gallery, duplicateKeys)
+  }));
 }
 
 async function loadDomains() {
@@ -606,6 +633,7 @@ async function buildGallerySummary(gallery, domainContext) {
       cover: coverResolution.cover,
       coverStatus: coverResolution.coverStatus,
       coverStatusMessage: getCoverStatusMessage(coverResolution.coverStatus),
+      galleryIntegrityStatus: gallery.galleryIntegrityStatus || "ok",
       galleryStatus: importValidation.galleryStatus,
       galleryStatusMessage: getGalleryStatusMessage(importValidation.galleryStatus),
       galleryOperationalStatus: resolveGalleryOperationalStatus({
@@ -632,6 +660,7 @@ async function buildGallerySummary(gallery, domainContext) {
       cover: null,
       coverStatus: "error_cover_file_missing",
       coverStatusMessage: getCoverStatusMessage("error_cover_file_missing"),
+      galleryIntegrityStatus: gallery.galleryIntegrityStatus || "ok",
       galleryStatus: "error_no_images",
       galleryStatusMessage: getGalleryStatusMessage("error_no_images"),
       galleryOperationalStatus: resolveGalleryOperationalStatus({
@@ -672,6 +701,7 @@ async function buildGalleryDetail(gallery, domainContext) {
     cover: coverResolution.cover,
     coverStatus: coverResolution.coverStatus,
     coverStatusMessage: getCoverStatusMessage(coverResolution.coverStatus),
+    galleryIntegrityStatus: gallery.galleryIntegrityStatus || "ok",
     galleryStatus: importValidation.galleryStatus,
     galleryStatusMessage: getGalleryStatusMessage(importValidation.galleryStatus),
     galleryOperationalStatus: resolveGalleryOperationalStatus({
