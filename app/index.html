@@ -9,52 +9,30 @@
   <body>
     <main class="page">
       <section class="hero">
-        <p class="eyebrow">Vitrine piloto</p>
+        <p class="eyebrow">Vitrine ativa</p>
         <h1>Gallery Platform</h1>
         <p class="intro">
-          Uma primeira vitrine estatica para apresentar galerias fotograficas
-          com foco mobile-first, navegacao simples e base pronta para evolucao.
+          Vitrine mobile-first conectada ao catalogo real de galerias, com
+          fluxo preparado para entrada da galeria antes da visualizacao final.
         </p>
       </section>
 
       <section class="showcase" aria-labelledby="galerias-em-destaque">
         <div class="section-heading">
-          <h2 id="galerias-em-destaque">Capas ficticias</h2>
-          <p>Exemplos locais para validar estrutura visual sem galerias reais.</p>
+          <h2 id="galerias-em-destaque">Galerias</h2>
+          <p>Capas reais vindas do catalogo local do projeto.</p>
         </div>
 
-        <div class="gallery-grid">
-          <article class="gallery-card">
-            <a class="cover-link" href="#colecao-serra-clara">
-              <img
-                src="/assets/capa-serra.svg"
-                alt="Capa ficticia da colecao Serra Clara"
-              >
-              <span class="cover-title">Serra Clara</span>
-            </a>
-          </article>
-
-          <article class="gallery-card">
-            <a class="cover-link" href="#colecao-costa-doce">
-              <img
-                src="/assets/capa-costa.svg"
-                alt="Capa ficticia da colecao Costa Doce"
-              >
-              <span class="cover-title">Costa Doce</span>
-            </a>
-          </article>
-
-          <article class="gallery-card">
-            <a class="cover-link" href="#colecao-luz-de-estudio">
-              <img
-                src="/assets/capa-estudio.svg"
-                alt="Capa ficticia da colecao Luz de Estudio"
-              >
-              <span class="cover-title">Luz de Estudio</span>
-            </a>
+        <div class="gallery-grid" id="galleryGrid" aria-live="polite">
+          <article class="gallery-card gallery-card--loading">
+            <div class="cover-link">
+              <div class="cover-shell cover-shell--placeholder"></div>
+              <span class="cover-title">Carregando galerias...</span>
+            </div>
           </article>
         </div>
       </section>
     </main>
+    <script src="/app.js"></script>
   </body>
 </html>

@@ -1,0 +1,96 @@
+async function loadGalleryCatalog() {
+  const response = await fetch("/api/galleries");
+
+  if (!response.ok) {
+    throw new Error("Unable to load galleries");
+  }
+
+  return response.json();
+}
+
+function buildPrivacyBadge(gallery) {
+  if (gallery.isPrivate) {
+    return '<span class="privacy-badge" aria-label="Galeria privada">Privada</span>';
+  }
+
+  return '<span class="privacy-badge privacy-badge--public" aria-label="Galeria publica">Publica</span>';
+}
+
+function buildGalleryCard(gallery) {
+  return `
+    <article class="gallery-card">
+      <a class="cover-link" href="/g/${encodeURIComponent(gallery.slug)}">
+        <div class="cover-shell">
+          <img
+            src="${gallery.coverUrl}"
+            alt="Capa da galeria ${gallery.title}"
+            loading="lazy"
+          >
+        </div>
+        <span class="gallery-meta">
+          <span class="cover-title-row">
+            <span class="cover-title">${gallery.title}</span>
+            ${buildPrivacyBadge(gallery)}
+          </span>
+          <span class="cover-description">${gallery.description || ""}</span>
+        </span>
+      </a>
+    </article>
+  `;
+}
+
+function renderGalleryCards(galleries) {
+  const galleryGrid = document.getElementById("galleryGrid");
+
+  if (!galleryGrid) {
+    return;
+  }
+
+  if (!Array.isArray(galleries) || galleries.length === 0) {
+    galleryGrid.innerHTML = `
+      <article class="gallery-card gallery-card--empty">
+        <div class="cover-link">
+          <div class="cover-shell cover-shell--placeholder"></div>
+          <span class="cover-title">Nenhuma galeria cadastrada</span>
+          <span class="cover-description">
+            Adicione itens em app/data/galleries.json para alimentar a vitrine.
+          </span>
+        </div>
+      </article>
+    `;
+    return;
+  }
+
+  galleryGrid.innerHTML = galleries.map(buildGalleryCard).join("");
+}
+
+function renderGalleryError() {
+  const galleryGrid = document.getElementById("galleryGrid");
+
+  if (!galleryGrid) {
+    return;
+  }
+
+  galleryGrid.innerHTML = `
+    <article class="gallery-card gallery-card--empty">
+      <div class="cover-link">
+        <div class="cover-shell cover-shell--placeholder"></div>
+        <span class="cover-title">Falha ao carregar a vitrine</span>
+        <span class="cover-description">
+          Confira o catalogo local e as rotas da API do servidor.
+        </span>
+      </div>
+    </article>
+  `;
+}
+
+async function initGalleryShowcase() {
+  try {
+    const galleries = await loadGalleryCatalog();
+    renderGalleryCards(galleries);
+  } catch (error) {
+    renderGalleryError();
+  }
+}
+
+initGalleryShowcase();
