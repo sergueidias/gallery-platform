@@ -1,0 +1,6 @@
+data/imports/**/images/*
+!data/imports/**/images/.gitkeep
+!data/imports/**/images/thumbnails/
+!data/imports/**/images/thumbnails/.gitkeep
+!data/imports/**/images/large/
+!data/imports/**/images/large/.gitkeep

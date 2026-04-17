@@ -64,6 +64,26 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function getContentType(fileName) {
+  const extension = path.extname(fileName).toLowerCase();
+
+  switch (extension) {
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".webp":
+      return "image/webp";
+    case ".avif":
+      return "image/avif";
+    case ".svg":
+      return "image/svg+xml; charset=utf-8";
+    default:
+      return "application/octet-stream";
+  }
+}
+
 function normalizeHost(host) {
   return String(host || "")
     .trim()
@@ -219,6 +239,11 @@ async function buildGallerySummary(gallery) {
 async function buildGalleryDetail(gallery) {
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
   const coverUrl = await getCoverUrl(gallery);
+  const imageItems = imageFiles.map((fileName) => ({
+    fileName,
+    thumbnailUrl: `/media/${encodeURIComponent(gallery.slug)}/thumbnails/${encodeURIComponent(fileName)}`,
+    largeUrl: `/media/${encodeURIComponent(gallery.slug)}/large/${encodeURIComponent(fileName)}`
+  }));
 
   return {
     ...gallery,
@@ -228,7 +253,8 @@ async function buildGalleryDetail(gallery) {
     images: {
       thumbnailsPath: `${gallery.sourcePath}/images/thumbnails`,
       largePath: `${gallery.sourcePath}/images/large`,
-      files: imageFiles
+      files: imageFiles,
+      items: imageItems
     }
   };
 }
@@ -273,6 +299,77 @@ function renderEntryPage(gallery) {
 }
 
 function renderGalleryPlaceholderPage(gallery) {
+  const firstImage = gallery.images.items[0] || null;
+  const thumbnailsMarkup = gallery.images.items.map((image, index) => {
+    const isActive = index === 0 ? " gallery-thumb-button--active" : "";
+
+    return `<button
+      class="gallery-thumb-button${isActive}"
+      type="button"
+      data-large-src="${escapeHtml(image.largeUrl)}"
+      data-file-name="${escapeHtml(image.fileName)}"
+      aria-label="Abrir imagem ${index + 1} de ${gallery.images.items.length}"
+    >
+      <img src="${escapeHtml(image.thumbnailUrl)}" alt="Thumbnail ${index + 1} da galeria ${escapeHtml(gallery.title)}" loading="lazy">
+    </button>`;
+  }).join("");
+
+  const emptyMarkup = `
+      <section class="gallery-placeholder-panel">
+        <p class="eyebrow">Galeria final</p>
+        <h1>${escapeHtml(gallery.title)}</h1>
+        <p>Galeria sem imagens disponiveis</p>
+      </section>`;
+
+  const galleryMarkup = `
+      <section class="gallery-viewer-panel">
+        <div class="gallery-stage">
+          <img
+            id="galleryLargeImage"
+            src="${escapeHtml(firstImage.largeUrl)}"
+            alt="Imagem ampliada da galeria ${escapeHtml(gallery.title)}"
+          >
+        </div>
+        <div class="gallery-stage-caption">
+          <span class="eyebrow">Visualizacao</span>
+          <p id="galleryLargeLabel">${escapeHtml(firstImage.fileName)}</p>
+        </div>
+      </section>
+      <section class="gallery-thumb-panel">
+        <div class="section-heading">
+          <h2>Thumbnails</h2>
+          <p>Toque ou clique em uma miniatura para trocar a imagem em destaque.</p>
+        </div>
+        <div class="gallery-thumb-grid" id="galleryThumbGrid">
+          ${thumbnailsMarkup}
+        </div>
+      </section>
+      <script>
+        (function () {
+          const viewer = document.getElementById("galleryLargeImage");
+          const label = document.getElementById("galleryLargeLabel");
+          const buttons = Array.from(document.querySelectorAll(".gallery-thumb-button"));
+
+          function setActiveButton(target) {
+            buttons.forEach((button) => {
+              button.classList.toggle("gallery-thumb-button--active", button === target);
+            });
+          }
+
+          buttons.forEach((button) => {
+            button.addEventListener("click", () => {
+              const largeSrc = button.getAttribute("data-large-src");
+              const fileName = button.getAttribute("data-file-name");
+
+              viewer.setAttribute("src", largeSrc);
+              viewer.setAttribute("alt", "Imagem ampliada " + fileName);
+              label.textContent = fileName;
+              setActiveButton(button);
+            });
+          });
+        }());
+      </script>`;
+
   return `<!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -287,8 +384,9 @@ function renderGalleryPlaceholderPage(gallery) {
       <section class="gallery-placeholder-panel">
         <p class="eyebrow">Galeria final</p>
         <h1>${escapeHtml(gallery.title)}</h1>
-        <p>Esta rota sera a galeria final de ${escapeHtml(gallery.title)}. Nesta etapa ela permanece como placeholder simples para validar o fluxo vitrine -> entrada -> galeria.</p>
+        <p>Visualizacao real baseada nos arquivos locais do export do Lightroom Classic, usando thumbnails e imagem grande em pares consistentes.</p>
       </section>
+      ${firstImage ? galleryMarkup : emptyMarkup}
     </main>
   </body>
 </html>`;
@@ -421,13 +519,12 @@ async function handleMediaRequest(requestUrl, response, domainContext) {
 
   const mediaParts = requestUrl.pathname.split("/").filter(Boolean);
 
-  if (mediaParts.length !== 3) {
+  if (mediaParts.length !== 3 && mediaParts.length !== 4) {
     sendNotFound(response);
     return true;
   }
 
   const slug = decodeURIComponent(mediaParts[1]);
-  const fileName = decodeURIComponent(mediaParts[2]);
   const gallery = await findGalleryBySlug(slug, domainContext);
 
   if (!gallery) {
@@ -436,21 +533,45 @@ async function handleMediaRequest(requestUrl, response, domainContext) {
   }
 
   const { thumbnailsDir, largeDir } = getGalleryImagePaths(gallery);
-  const fileCandidates = [
-    path.join(thumbnailsDir, fileName),
-    path.join(largeDir, fileName)
-  ];
+
+  if (mediaParts.length === 4) {
+    const variant = decodeURIComponent(mediaParts[2]);
+    const fileName = decodeURIComponent(mediaParts[3]);
+    const baseDir = variant === "thumbnails"
+      ? thumbnailsDir
+      : variant === "large"
+        ? largeDir
+        : null;
+
+    if (!baseDir) {
+      sendNotFound(response);
+      return true;
+    }
+
+    const filePath = path.join(baseDir, fileName);
+
+    if (filePath.startsWith(baseDir) && await fileExists(filePath)) {
+      sendFile(response, filePath, getContentType(fileName));
+      return true;
+    }
+
+    sendNotFound(response);
+    return true;
+  }
+
+  const fileName = decodeURIComponent(mediaParts[2]);
+  const fileCandidates = [path.join(thumbnailsDir, fileName), path.join(largeDir, fileName)];
 
   for (const filePath of fileCandidates) {
     if (filePath.startsWith(thumbnailsDir) || filePath.startsWith(largeDir)) {
       if (await fileExists(filePath)) {
-        sendFile(response, filePath, "image/jpeg");
+        sendFile(response, filePath, getContentType(fileName));
         return true;
       }
     }
   }
 
-  sendFile(response, path.join(appRoot, "assets", "capa-serra.svg"), "image/svg+xml; charset=utf-8");
+  sendFile(response, path.join(appRoot, "assets", "capa-serra.svg"), getContentType("fallback.svg"));
   return true;
 }
 
