@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
+const crypto = require("crypto");
 const { URL } = require("url");
 
 const port = Number(process.env.APP_PORT || process.env.PORT || 3000);
@@ -12,6 +13,8 @@ const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
 const cssFilePath = path.join(appRoot, "styles.css");
 const indexFilePath = path.join(appRoot, "index.html");
 const appJsFilePath = path.join(appRoot, "app.js");
+const ACCESS_TOKEN_TTL_MS = 30 * 60 * 1000;
+const galleryAccessStore = new Map();
 
 function sendText(response, statusCode, body, contentType) {
   response.writeHead(statusCode, {
@@ -32,6 +35,14 @@ function sendJson(response, statusCode, payload) {
 function redirect(response, location) {
   response.writeHead(302, {
     Location: location
+  });
+  response.end();
+}
+
+function redirectWithHeaders(response, location, headers) {
+  response.writeHead(302, {
+    Location: location,
+    ...headers
   });
   response.end();
 }
@@ -81,6 +92,10 @@ function getEntryUrl(gallery, errorCode) {
   return `${baseUrl}?error=${encodeURIComponent(errorCode)}`;
 }
 
+function getGalleryUrl(gallery) {
+  return `/gallery/${encodeURIComponent(gallery.slug)}`;
+}
+
 function getContentType(fileName) {
   const extension = path.extname(fileName).toLowerCase();
 
@@ -106,6 +121,85 @@ function normalizeHost(host) {
     .trim()
     .toLowerCase()
     .replace(/:\d+$/, "");
+}
+
+function parseCookies(request) {
+  const header = request.headers.cookie || "";
+
+  if (!header) {
+    return {};
+  }
+
+  return header.split(";").reduce((cookies, item) => {
+    const [rawName, ...rawValueParts] = item.trim().split("=");
+    const rawValue = rawValueParts.join("=");
+
+    if (!rawName) {
+      return cookies;
+    }
+
+    cookies[rawName] = decodeURIComponent(rawValue || "");
+    return cookies;
+  }, {});
+}
+
+function getGalleryAccessCookieName(gallery) {
+  return `gallery_access_${gallery.slug}`;
+}
+
+function pruneExpiredGalleryAccess() {
+  const now = Date.now();
+
+  for (const [token, access] of galleryAccessStore.entries()) {
+    if (access.expiresAt <= now) {
+      galleryAccessStore.delete(token);
+    }
+  }
+}
+
+function createGalleryAccess(gallery) {
+  pruneExpiredGalleryAccess();
+
+  const token = crypto.randomBytes(24).toString("hex");
+  const expiresAt = Date.now() + ACCESS_TOKEN_TTL_MS;
+
+  galleryAccessStore.set(token, {
+    slug: gallery.slug,
+    expiresAt
+  });
+
+  return {
+    token,
+    expiresAt
+  };
+}
+
+function buildGalleryAccessCookie(gallery, token) {
+  const cookieName = getGalleryAccessCookieName(gallery);
+  const maxAge = Math.floor(ACCESS_TOKEN_TTL_MS / 1000);
+
+  return `${cookieName}=${encodeURIComponent(token)}; Max-Age=${maxAge}; Path=/gallery/${encodeURIComponent(gallery.slug)}; HttpOnly; SameSite=Lax`;
+}
+
+function hasValidGalleryAccess(request, gallery) {
+  pruneExpiredGalleryAccess();
+
+  const cookieName = getGalleryAccessCookieName(gallery);
+  const cookies = parseCookies(request);
+  const token = cookies[cookieName];
+
+  if (!token) {
+    return false;
+  }
+
+  const access = galleryAccessStore.get(token);
+
+  if (!access || access.slug !== gallery.slug || access.expiresAt <= Date.now()) {
+    galleryAccessStore.delete(token);
+    return false;
+  }
+
+  return true;
 }
 
 function readRequestBody(request) {
@@ -257,7 +351,7 @@ async function buildGallerySummary(gallery) {
       imageCount: imageFiles.length,
       coverUrl,
       entryUrl: getEntryUrl(gallery),
-      galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`
+      galleryUrl: getGalleryUrl(gallery)
     };
   } catch (error) {
     return {
@@ -265,7 +359,7 @@ async function buildGallerySummary(gallery) {
       imageCount: 0,
       coverUrl: "/assets/capa-serra.svg",
       entryUrl: getEntryUrl(gallery),
-      galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`
+      galleryUrl: getGalleryUrl(gallery)
     };
   }
 }
@@ -283,7 +377,7 @@ async function buildGalleryDetail(gallery) {
     ...gallery,
     coverUrl,
     entryUrl: getEntryUrl(gallery),
-    galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`,
+    galleryUrl: getGalleryUrl(gallery),
     images: {
       thumbnailsPath: `${gallery.sourcePath}/images/thumbnails`,
       largePath: `${gallery.sourcePath}/images/large`,
@@ -505,7 +599,7 @@ async function handleApiRequest(requestUrl, response, domainContext) {
   return false;
 }
 
-async function handlePageRequest(requestUrl, response, domainContext) {
+async function handlePageRequest(requestUrl, request, response, domainContext) {
   if (requestUrl.pathname === "/") {
     sendText(response, 200, renderHomePage(domainContext), "text/html; charset=utf-8");
     return true;
@@ -545,7 +639,7 @@ async function handlePageRequest(requestUrl, response, domainContext) {
       return true;
     }
 
-    if (gallery.isPrivate && requestUrl.searchParams.get("access") !== "granted") {
+    if (gallery.isPrivate && !hasValidGalleryAccess(request, gallery)) {
       redirect(response, getEntryUrl(gallery));
       return true;
     }
@@ -587,7 +681,12 @@ async function handleAccessRequest(requestUrl, request, response, domainContext)
   const expectedPassword = gallery.password || "";
 
   if (submittedPassword && submittedPassword === expectedPassword) {
-    redirect(response, `${gallery.galleryUrl}?access=granted`);
+    const access = createGalleryAccess(gallery);
+    const cookie = buildGalleryAccessCookie(gallery, access.token);
+
+    redirectWithHeaders(response, gallery.galleryUrl, {
+      "Set-Cookie": cookie
+    });
     return true;
   }
 
@@ -678,7 +777,7 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if (await handlePageRequest(requestUrl, response, domainContext)) {
+  if (await handlePageRequest(requestUrl, request, response, domainContext)) {
     return;
   }
 
