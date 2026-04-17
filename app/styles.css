@@ -202,6 +202,13 @@ img {
   gap: 12px;
 }
 
+.cover-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .cover-title {
   display: inline-block;
   font-size: 1rem;
@@ -240,6 +247,17 @@ img {
 
 .privacy-badge--public::before {
   content: "\1F513";
+}
+
+.cover-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(138, 47, 47, 0.12);
+  color: #8a2f2f;
+  font-size: 0.76rem;
+  white-space: nowrap;
 }
 
 .gallery-card--empty .cover-link,
@@ -301,6 +319,22 @@ img {
   border-radius: 999px;
   background: rgba(52, 39, 30, 0.08);
   color: var(--text);
+  font-size: 0.84rem;
+}
+
+.entry-status-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.entry-cover-warning {
+  display: inline-flex;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(138, 47, 47, 0.12);
+  color: #8a2f2f;
   font-size: 0.84rem;
 }
 

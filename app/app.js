@@ -16,6 +16,14 @@ function buildPrivacyBadge(gallery) {
   return '<span class="privacy-badge privacy-badge--public" aria-label="Galeria publica">Publica</span>';
 }
 
+function buildCoverStatusBadge(gallery) {
+  if (gallery.coverStatus === "ok") {
+    return "";
+  }
+
+  return '<span class="cover-status-badge" aria-label="Capa com erro">Capa com erro</span>';
+}
+
 function buildGalleryCard(gallery) {
   return `
     <article class="gallery-card">
@@ -30,7 +38,10 @@ function buildGalleryCard(gallery) {
         <span class="gallery-meta">
           <span class="cover-title-row">
             <span class="cover-title">${gallery.title}</span>
-            ${buildPrivacyBadge(gallery)}
+            <span class="cover-badges">
+              ${buildCoverStatusBadge(gallery)}
+              ${buildPrivacyBadge(gallery)}
+            </span>
           </span>
           <span class="cover-description">${gallery.description || ""}</span>
         </span>

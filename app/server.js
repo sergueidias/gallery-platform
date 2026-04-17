@@ -9,10 +9,12 @@ const appRoot = __dirname;
 const repoRoot = path.resolve(appRoot, "..");
 const galleriesFilePath = path.join(appRoot, "data", "galleries.json");
 const domainsFilePath = path.join(appRoot, "data", "domains.json");
+const galleryMetadataRoot = path.join(appRoot, "data", "gallery-metadata");
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
 const cssFilePath = path.join(appRoot, "styles.css");
 const indexFilePath = path.join(appRoot, "index.html");
 const appJsFilePath = path.join(appRoot, "app.js");
+const coverErrorAssetUrl = "/assets/cover-error.svg";
 const ACCESS_TOKEN_TTL_MS = 30 * 60 * 1000;
 const galleryAccessStore = new Map();
 
@@ -94,6 +96,22 @@ function getEntryUrl(gallery, errorCode) {
 
 function getGalleryUrl(gallery) {
   return `/gallery/${encodeURIComponent(gallery.slug)}`;
+}
+
+function getStudioCode(domainContext) {
+  if (domainContext.domain === "serguei.com.br") {
+    return "SXT";
+  }
+
+  if (domainContext.domain === "tiemitamura.com") {
+    return "TT";
+  }
+
+  if (domainContext.domain === "yukistudio.com" || domainContext.domain === "yukstudio.com") {
+    return "YUK";
+  }
+
+  return "GP";
 }
 
 function getContentType(fileName) {
@@ -246,6 +264,106 @@ function getGalleryImagePaths(gallery) {
   };
 }
 
+function getGalleryMetadataFilePath(slug) {
+  return path.join(galleryMetadataRoot, `${slug}.json`);
+}
+
+async function loadGalleryMetadata(slug) {
+  try {
+    return await readJsonFile(getGalleryMetadataFilePath(slug));
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return [];
+    }
+
+    throw error;
+  }
+}
+
+function matchesCoverKeyword(item) {
+  return Array.isArray(item.keywords)
+    && item.keywords.some((keyword) => String(keyword).trim().toLowerCase() === "capa");
+}
+
+function matchesCoverTitle(item) {
+  return String(item.title || "").trim().toLowerCase() === "capa";
+}
+
+function matchesCoverFileName(item) {
+  return String(item.fileName || "").toUpperCase().includes("CAPA");
+}
+
+function extractTomboFromFileName(fileName) {
+  const normalizedName = String(fileName || "").replace(/\.[^.]+$/, "");
+  const parts = normalizedName.split("_");
+
+  if (parts.length < 3) {
+    return normalizedName;
+  }
+
+  return parts.slice(2).join("_");
+}
+
+function buildCoverPublicName(gallery, domainContext) {
+  const studioCode = getStudioCode(domainContext);
+  return `${studioCode} ${gallery.title}-CAPA`;
+}
+
+async function resolveGalleryCover(gallery, domainContext) {
+  const metadataItems = await loadGalleryMetadata(gallery.slug);
+  const consistentFiles = await listConsistentImageFiles(gallery.sourcePath);
+  const consistentFileSet = new Set(consistentFiles);
+  const candidatesByKeyword = metadataItems.filter(matchesCoverKeyword);
+
+  let candidates = candidatesByKeyword;
+  let coverStatus = "error_missing_cover";
+
+  if (candidates.length === 0) {
+    const candidatesByTitle = metadataItems.filter(matchesCoverTitle);
+    candidates = candidatesByTitle;
+
+    if (candidatesByTitle.length === 0) {
+      candidates = metadataItems.filter(matchesCoverFileName);
+    }
+  }
+
+  if (candidates.length === 0) {
+    return {
+      cover: null,
+      coverStatus,
+      coverUrl: coverErrorAssetUrl,
+      coverPublicName: buildCoverPublicName(gallery, domainContext)
+    };
+  }
+
+  if (candidates.length > 1) {
+    return {
+      cover: null,
+      coverStatus: "error_multiple_covers",
+      coverUrl: coverErrorAssetUrl,
+      coverPublicName: buildCoverPublicName(gallery, domainContext)
+    };
+  }
+
+  const selectedCover = candidates[0].fileName;
+
+  if (!consistentFileSet.has(selectedCover)) {
+    return {
+      cover: selectedCover,
+      coverStatus: "error_cover_file_missing",
+      coverUrl: coverErrorAssetUrl,
+      coverPublicName: buildCoverPublicName(gallery, domainContext)
+    };
+  }
+
+  return {
+    cover: selectedCover,
+    coverStatus: "ok",
+    coverUrl: `/media/${encodeURIComponent(gallery.slug)}/${encodeURIComponent(selectedCover)}`,
+    coverPublicName: buildCoverPublicName(gallery, domainContext)
+  };
+}
+
 async function fileExists(filePath) {
   try {
     const stats = await fs.promises.stat(filePath);
@@ -325,57 +443,51 @@ async function findGalleryBySlug(slug, domainContext) {
     .find((item) => item.slug === slug) || null;
 }
 
-async function getCoverUrl(gallery) {
-  const { thumbnailsDir, largeDir } = getGalleryImagePaths(gallery);
-  const preferredPaths = [
-    path.join(thumbnailsDir, gallery.cover),
-    path.join(largeDir, gallery.cover)
-  ];
-
-  for (const filePath of preferredPaths) {
-    if (await fileExists(filePath)) {
-      return `/media/${encodeURIComponent(gallery.slug)}/${encodeURIComponent(gallery.cover)}`;
-    }
-  }
-
-  return `/assets/capa-serra.svg`;
-}
-
-async function buildGallerySummary(gallery) {
+async function buildGallerySummary(gallery, domainContext) {
   try {
     const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
-    const coverUrl = await getCoverUrl(gallery);
+    const coverResolution = await resolveGalleryCover(gallery, domainContext);
 
     return {
       ...gallery,
+      cover: coverResolution.cover,
+      coverStatus: coverResolution.coverStatus,
       imageCount: imageFiles.length,
-      coverUrl,
+      coverUrl: coverResolution.coverUrl,
+      coverPublicName: coverResolution.coverPublicName,
       entryUrl: getEntryUrl(gallery),
       galleryUrl: getGalleryUrl(gallery)
     };
   } catch (error) {
     return {
       ...gallery,
+      cover: null,
+      coverStatus: "error_cover_file_missing",
       imageCount: 0,
-      coverUrl: "/assets/capa-serra.svg",
+      coverUrl: coverErrorAssetUrl,
+      coverPublicName: buildCoverPublicName(gallery, domainContext),
       entryUrl: getEntryUrl(gallery),
       galleryUrl: getGalleryUrl(gallery)
     };
   }
 }
 
-async function buildGalleryDetail(gallery) {
+async function buildGalleryDetail(gallery, domainContext) {
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
-  const coverUrl = await getCoverUrl(gallery);
+  const coverResolution = await resolveGalleryCover(gallery, domainContext);
   const imageItems = imageFiles.map((fileName) => ({
     fileName,
+    publicName: `${getStudioCode(domainContext)} ${gallery.title}-${extractTomboFromFileName(fileName)}`,
     thumbnailUrl: `/media/${encodeURIComponent(gallery.slug)}/thumbnails/${encodeURIComponent(fileName)}`,
     largeUrl: `/media/${encodeURIComponent(gallery.slug)}/large/${encodeURIComponent(fileName)}`
   }));
 
   return {
     ...gallery,
-    coverUrl,
+    cover: coverResolution.cover,
+    coverStatus: coverResolution.coverStatus,
+    coverUrl: coverResolution.coverUrl,
+    coverPublicName: coverResolution.coverPublicName,
     entryUrl: getEntryUrl(gallery),
     galleryUrl: getGalleryUrl(gallery),
     images: {
@@ -390,6 +502,9 @@ async function buildGalleryDetail(gallery) {
 function renderEntryPage(gallery) {
   const statusText = gallery.isPrivate ? "Privada" : "Publica";
   const hasPasswordError = gallery.accessError === "invalid-password";
+  const coverWarningMarkup = gallery.coverStatus !== "ok"
+    ? '<span class="entry-cover-warning">Capa com erro</span>'
+    : "";
   const privateAccessMarkup = `
           <form class="entry-form" method="POST" action="/access/${encodeURIComponent(gallery.slug)}">
             <label class="entry-label" for="gallery-password">Senha</label>
@@ -427,7 +542,10 @@ function renderEntryPage(gallery) {
         <div class="entry-copy">
           <p class="eyebrow">Pagina de entrada</p>
           <h1>${escapeHtml(gallery.title)}</h1>
-          <span class="entry-status">${escapeHtml(statusText)}</span>
+          <div class="entry-status-group">
+            <span class="entry-status">${escapeHtml(statusText)}</span>
+            ${coverWarningMarkup}
+          </div>
           <p>${escapeHtml(gallery.description || "Galeria sem descricao cadastrada.")}</p>
           ${gallery.isPrivate ? privateAccessMarkup : publicAccessMarkup}
         </div>
@@ -568,7 +686,7 @@ function renderVitrineTemplate(domainContext) {
 async function handleApiRequest(requestUrl, response, domainContext) {
   if (requestUrl.pathname === "/api/galleries") {
     const galleries = filterGalleriesByCatalog(await loadGalleries(), domainContext);
-    const payload = await Promise.all(galleries.map(buildGallerySummary));
+    const payload = await Promise.all(galleries.map((gallery) => buildGallerySummary(gallery, domainContext)));
 
     sendJson(response, 200, {
       domain: {
@@ -591,7 +709,7 @@ async function handleApiRequest(requestUrl, response, domainContext) {
       return true;
     }
 
-    const payload = await buildGalleryDetail(gallery);
+    const payload = await buildGalleryDetail(gallery, domainContext);
     sendJson(response, 200, payload);
     return true;
   }
@@ -624,7 +742,7 @@ async function handlePageRequest(requestUrl, request, response, domainContext) {
       return true;
     }
 
-    const detail = await buildGalleryDetail(gallery);
+    const detail = await buildGalleryDetail(gallery, domainContext);
     detail.accessError = requestUrl.searchParams.get("error") || "";
     sendText(response, 200, renderEntryPage(detail), "text/html; charset=utf-8");
     return true;
@@ -644,7 +762,7 @@ async function handlePageRequest(requestUrl, request, response, domainContext) {
       return true;
     }
 
-    const detail = await buildGalleryDetail(gallery);
+    const detail = await buildGalleryDetail(gallery, domainContext);
     sendText(
       response,
       200,
