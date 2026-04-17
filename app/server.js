@@ -945,9 +945,15 @@ function renderVitrineTemplate(domainContext) {
 async function handleApiRequest(requestUrl, response, domainContext) {
   if (requestUrl.pathname === "/api/galleries") {
     const galleries = filterGalleriesByCatalog(await loadGalleries(), domainContext);
-    const payload = sortGalleries(
+    const sortedPayload = sortGalleries(
       await Promise.all(galleries.map((gallery) => buildGallerySummary(gallery, domainContext)))
     );
+    const requestedStatus = String(requestUrl.searchParams.get("status") || "").trim().toLowerCase();
+    const payload = requestedStatus === "ok"
+      ? sortedPayload.filter((gallery) => gallery.galleryOperationalStatus === "ok")
+      : requestedStatus === "error"
+        ? sortedPayload.filter((gallery) => gallery.galleryOperationalStatus !== "ok")
+        : sortedPayload;
 
     sendJson(response, 200, {
       domain: {
