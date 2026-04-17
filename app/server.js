@@ -264,6 +264,20 @@ function getGalleryImagePaths(gallery) {
   };
 }
 
+function normalizeImportPaths(gallery) {
+  const normalizedSourcePath = String(gallery.sourcePath || "")
+    .replace(/\\/g, "/")
+    .replace(/\/+/g, "/")
+    .replace(/\/$/, "");
+  const imagesRoot = `${normalizedSourcePath}/images`;
+
+  return {
+    imagesRoot,
+    thumbnailsPathNormalized: `${imagesRoot}/thumbnails`,
+    largePathNormalized: `${imagesRoot}/large`
+  };
+}
+
 async function readImageFileNames(directoryPath) {
   try {
     const entries = await fs.promises.readdir(directoryPath, { withFileTypes: true });
@@ -604,6 +618,8 @@ async function buildGallerySummary(gallery, domainContext) {
           coverStatus: coverResolution.coverStatus
         })
       ),
+      thumbnailsPathNormalized: normalizeImportPaths(gallery).thumbnailsPathNormalized,
+      largePathNormalized: normalizeImportPaths(gallery).largePathNormalized,
       imageCount: imageFiles.length,
       coverUrl: coverResolution.coverUrl,
       coverPublicName: coverResolution.coverPublicName,
@@ -628,6 +644,8 @@ async function buildGallerySummary(gallery, domainContext) {
           coverStatus: "error_cover_file_missing"
         })
       ),
+      thumbnailsPathNormalized: normalizeImportPaths(gallery).thumbnailsPathNormalized,
+      largePathNormalized: normalizeImportPaths(gallery).largePathNormalized,
       imageCount: 0,
       coverUrl: coverErrorAssetUrl,
       coverPublicName: buildCoverPublicName(gallery, domainContext),
@@ -641,6 +659,7 @@ async function buildGalleryDetail(gallery, domainContext) {
   const importValidation = await validateGalleryImport(gallery);
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
   const coverResolution = await resolveGalleryCover(gallery, domainContext);
+  const normalizedPaths = normalizeImportPaths(gallery);
   const imageItems = imageFiles.map((fileName) => ({
     fileName,
     publicName: `${getStudioCode(domainContext)} ${gallery.title}-${extractTomboFromFileName(fileName)}`,
@@ -665,6 +684,8 @@ async function buildGalleryDetail(gallery, domainContext) {
         coverStatus: coverResolution.coverStatus
       })
     ),
+    thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
+    largePathNormalized: normalizedPaths.largePathNormalized,
     coverUrl: coverResolution.coverUrl,
     coverPublicName: coverResolution.coverPublicName,
     entryUrl: getEntryUrl(gallery),
@@ -672,6 +693,8 @@ async function buildGalleryDetail(gallery, domainContext) {
     images: {
       thumbnailsPath: `${gallery.sourcePath}/images/thumbnails`,
       largePath: `${gallery.sourcePath}/images/large`,
+      thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
+      largePathNormalized: normalizedPaths.largePathNormalized,
       files: imageFiles,
       items: imageItems
     }
