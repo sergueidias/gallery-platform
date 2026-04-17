@@ -402,6 +402,18 @@ function buildCoverPublicName(gallery, domainContext) {
   return `${studioCode} ${gallery.title}-CAPA`;
 }
 
+function resolveGalleryOperationalStatus(gallery) {
+  if (gallery.galleryStatus !== "ok") {
+    return gallery.galleryStatus;
+  }
+
+  if (gallery.coverStatus !== "ok") {
+    return gallery.coverStatus;
+  }
+
+  return "ok";
+}
+
 async function resolveGalleryCover(gallery, domainContext) {
   const metadataItems = await loadGalleryMetadata(gallery.slug);
   const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
@@ -525,6 +537,10 @@ async function buildGallerySummary(gallery, domainContext) {
       cover: coverResolution.cover,
       coverStatus: coverResolution.coverStatus,
       galleryStatus: importValidation.galleryStatus,
+      galleryOperationalStatus: resolveGalleryOperationalStatus({
+        galleryStatus: importValidation.galleryStatus,
+        coverStatus: coverResolution.coverStatus
+      }),
       imageCount: imageFiles.length,
       coverUrl: coverResolution.coverUrl,
       coverPublicName: coverResolution.coverPublicName,
@@ -537,6 +553,10 @@ async function buildGallerySummary(gallery, domainContext) {
       cover: null,
       coverStatus: "error_cover_file_missing",
       galleryStatus: "error_no_images",
+      galleryOperationalStatus: resolveGalleryOperationalStatus({
+        galleryStatus: "error_no_images",
+        coverStatus: "error_cover_file_missing"
+      }),
       imageCount: 0,
       coverUrl: coverErrorAssetUrl,
       coverPublicName: buildCoverPublicName(gallery, domainContext),
@@ -562,6 +582,10 @@ async function buildGalleryDetail(gallery, domainContext) {
     cover: coverResolution.cover,
     coverStatus: coverResolution.coverStatus,
     galleryStatus: importValidation.galleryStatus,
+    galleryOperationalStatus: resolveGalleryOperationalStatus({
+      galleryStatus: importValidation.galleryStatus,
+      coverStatus: coverResolution.coverStatus
+    }),
     coverUrl: coverResolution.coverUrl,
     coverPublicName: coverResolution.coverPublicName,
     entryUrl: getEntryUrl(gallery),

@@ -32,6 +32,14 @@ function buildGalleryStatusBadge(gallery) {
   return '<span class="gallery-status-badge" aria-label="Import com erro">Import com erro</span>';
 }
 
+function buildGalleryOperationalBadge(gallery) {
+  if (gallery.galleryOperationalStatus === "ok") {
+    return "";
+  }
+
+  return '<span class="gallery-operational-badge" aria-label="Estado operacional com alerta">Atencao operacional</span>';
+}
+
 function buildGalleryCard(gallery) {
   return `
     <article class="gallery-card">
@@ -47,6 +55,7 @@ function buildGalleryCard(gallery) {
           <span class="cover-title-row">
             <span class="cover-title">${gallery.title}</span>
             <span class="cover-badges">
+              ${buildGalleryOperationalBadge(gallery)}
               ${buildGalleryStatusBadge(gallery)}
               ${buildCoverStatusBadge(gallery)}
               ${buildPrivacyBadge(gallery)}
