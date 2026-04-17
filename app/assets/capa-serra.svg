@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Capa Serra Clara</title>
+  <desc id="desc">Ilustracao abstrata em tons terrosos e ceu claro.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f4d8b1"/>
+      <stop offset="100%" stop-color="#d08c60"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <circle cx="598" cy="214" r="84" fill="#fff4d6" opacity="0.95"/>
+  <path d="M0 664C136 594 224 578 334 617C416 646 503 651 605 577C672 529 730 506 800 510V1000H0V664Z" fill="#8f5938"/>
+  <path d="M0 743C115 700 225 703 331 760C430 814 521 820 630 764C708 724 762 704 800 706V1000H0V743Z" fill="#5f3a29"/>
+</svg>

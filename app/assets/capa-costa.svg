@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Capa Costa Doce</title>
+  <desc id="desc">Ilustracao abstrata com mar, areia e horizonte suave.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d8eef1"/>
+      <stop offset="100%" stop-color="#f7d6b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#sky)"/>
+  <rect y="560" width="800" height="220" fill="#7fb9c6"/>
+  <rect y="780" width="800" height="220" fill="#e4c08c"/>
+  <path d="M0 610C92 586 175 580 256 605C334 629 414 631 492 609C577 585 653 582 800 624V674C701 648 617 647 531 672C444 698 354 701 267 678C173 653 93 651 0 684V610Z" fill="#edf9ff" opacity="0.8"/>
+  <circle cx="167" cy="180" r="68" fill="#fff1d2" opacity="0.96"/>
+</svg>

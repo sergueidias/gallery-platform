@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Capa Luz de Estudio</title>
+  <desc id="desc">Ilustracao abstrata com formas geometricas e luz difusa.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1b2430"/>
+      <stop offset="100%" stop-color="#534b8d"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="1000" fill="url(#bg)"/>
+  <circle cx="400" cy="290" r="176" fill="#ffddb0" opacity="0.92"/>
+  <rect x="100" y="535" width="600" height="310" rx="34" fill="#ffffff" opacity="0.12"/>
+  <rect x="156" y="591" width="488" height="198" rx="24" fill="#ffd08d" opacity="0.2"/>
+  <path d="M210 706C258 654 314 616 378 591C442 566 494 535 540 486C576 448 608 404 636 355" fill="none" stroke="#fff4e0" stroke-width="26" stroke-linecap="round"/>
+</svg>

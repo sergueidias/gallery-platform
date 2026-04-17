@@ -1,0 +1,145 @@
+:root {
+  color-scheme: light;
+  --page-bg: #f5efe6;
+  --surface: #fffaf2;
+  --surface-strong: #f0e4d2;
+  --text: #1f1a17;
+  --muted: #665f57;
+  --border: #d8c9b5;
+  --shadow: 0 18px 38px rgba(69, 46, 24, 0.12);
+  --radius-lg: 24px;
+  --radius-md: 18px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: Georgia, "Times New Roman", serif;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.75), transparent 32%),
+    linear-gradient(180deg, #efe0c9 0%, var(--page-bg) 48%, #f7f2ea 100%);
+}
+
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.page {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.hero {
+  padding: 24px 0 12px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.hero h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 9vw, 5rem);
+  line-height: 0.95;
+}
+
+.intro {
+  max-width: 38rem;
+  margin: 18px 0 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.showcase {
+  margin-top: 28px;
+  padding: 20px;
+  border: 1px solid rgba(216, 201, 181, 0.9);
+  border-radius: calc(var(--radius-lg) + 4px);
+  background: rgba(255, 250, 242, 0.78);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.section-heading p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.gallery-card {
+  margin: 0;
+}
+
+.cover-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.cover-link img {
+  aspect-ratio: 4 / 5;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 14px 26px rgba(64, 47, 30, 0.15);
+  object-fit: cover;
+  transition:
+    transform 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
+.cover-link:hover img,
+.cover-link:focus-visible img {
+  transform: translateY(-3px);
+  border-color: #aa8e6b;
+  box-shadow: 0 20px 34px rgba(64, 47, 30, 0.22);
+}
+
+.cover-link:focus-visible {
+  outline: none;
+}
+
+.cover-title {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 1rem;
+}
+
+@media (min-width: 700px) {
+  .page {
+    padding: 40px 24px 72px;
+  }
+
+  .showcase {
+    padding: 28px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}

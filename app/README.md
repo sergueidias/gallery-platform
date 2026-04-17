@@ -16,7 +16,11 @@ npm start
 
 ## Rotas disponiveis
 
-- `GET /` retorna texto simples confirmando que o app esta ativo
+- `GET /` retorna a vitrine estatica inicial
+- `GET /styles.css` retorna os estilos da vitrine
+- `GET /assets/...` retorna placeholders locais usados nas capas
+- `GET /api/galleries` retorna a lista de galerias do catalogo JSON
+- `GET /api/gallery/:slug` retorna uma galeria com a listagem basica de imagens consistentes
 - `GET /health` retorna JSON simples de status
 
 ## Escopo desta etapa

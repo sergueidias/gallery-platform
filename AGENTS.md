@@ -29,3 +29,5 @@
 - Toda etapa deve terminar com documentacao em `docs/`.
 - Toda etapa deve parar para revisao humana antes de passos maiores.
 - Preferir ajustes incrementais que alinhem o repositorio com a documentacao existente.
+- Diferenciar ajustes de conteudo/metadados de ajustes estruturais/codigo antes de editar.
+- Validar o menor comportamento possivel apos cada mudanca, sem instalar dependencias nem expandir escopo.
