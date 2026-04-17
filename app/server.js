@@ -1054,6 +1054,59 @@ async function handleApiRequest(requestUrl, request, response, domainContext) {
     return true;
   }
 
+  if (requestUrl.pathname === "/api/gallery-manifest") {
+    const requestedSlug = String(requestUrl.searchParams.get("slug") || "").trim();
+
+    if (!requestedSlug) {
+      sendJson(response, 400, {
+        status: "error",
+        message: "Missing slug parameter"
+      });
+      return true;
+    }
+
+    const gallery = await findGalleryBySlug(requestedSlug, domainContext);
+
+    if (!gallery) {
+      sendNotFound(response);
+      return true;
+    }
+
+    const [summary, detail] = await Promise.all([
+      buildGallerySummary(gallery, domainContext),
+      buildGalleryDetail(gallery, domainContext)
+    ]);
+    const normalizedPaths = normalizeImportPaths(gallery);
+    const accessStatus = !gallery.isPrivate
+      ? "public"
+      : hasValidGalleryAccess(request, gallery)
+        ? "authorized"
+        : "unauthorized";
+
+    sendJson(response, 200, {
+      gallery: {
+        ...summary,
+        thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
+        largePathNormalized: normalizedPaths.largePathNormalized
+      },
+      detail: {
+        ...detail,
+        thumbnailsPathNormalized: normalizedPaths.thumbnailsPathNormalized,
+        largePathNormalized: normalizedPaths.largePathNormalized
+      },
+      access: {
+        isPrivate: gallery.isPrivate,
+        status: accessStatus
+      },
+      download: {
+        enabled: true,
+        totalFiles: detail.images.files.length,
+        endpoint: `/api/gallery-download?slug=${encodeURIComponent(gallery.slug)}`
+      }
+    });
+    return true;
+  }
+
   if (requestUrl.pathname.startsWith("/api/gallery/")) {
     const slug = decodeURIComponent(requestUrl.pathname.replace("/api/gallery/", ""));
     const gallery = await findGalleryBySlug(slug, domainContext);
