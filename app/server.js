@@ -942,7 +942,7 @@ function renderVitrineTemplate(domainContext) {
     .replaceAll("__DOMAIN_NAME__", escapeHtml(domainContext.name));
 }
 
-async function handleApiRequest(requestUrl, response, domainContext) {
+async function handleApiRequest(requestUrl, request, response, domainContext) {
   if (requestUrl.pathname === "/api/galleries") {
     const galleries = filterGalleriesByCatalog(await loadGalleries(), domainContext);
     const sortedPayload = sortGalleries(
@@ -986,6 +986,14 @@ async function handleApiRequest(requestUrl, response, domainContext) {
 
     if (!gallery) {
       sendNotFound(response);
+      return true;
+    }
+
+    if (gallery.isPrivate && !hasValidGalleryAccess(request, gallery)) {
+      sendJson(response, 403, {
+        status: "forbidden",
+        message: "Access denied"
+      });
       return true;
     }
 
@@ -1195,7 +1203,7 @@ async function handleRequest(request, response) {
     return;
   }
 
-  if (await handleApiRequest(requestUrl, response, domainContext)) {
+  if (await handleApiRequest(requestUrl, request, response, domainContext)) {
     return;
   }
 
