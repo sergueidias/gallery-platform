@@ -29,6 +29,13 @@ function sendJson(response, statusCode, payload) {
   );
 }
 
+function redirect(response, location) {
+  response.writeHead(302, {
+    Location: location
+  });
+  response.end();
+}
+
 function sendFile(response, filePath, contentType) {
   fs.readFile(filePath, (error, content) => {
     if (error) {
@@ -64,6 +71,16 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function getEntryUrl(gallery, errorCode) {
+  const baseUrl = `/g/${encodeURIComponent(gallery.slug)}`;
+
+  if (!errorCode) {
+    return baseUrl;
+  }
+
+  return `${baseUrl}?error=${encodeURIComponent(errorCode)}`;
+}
+
 function getContentType(fileName) {
   const extension = path.extname(fileName).toLowerCase();
 
@@ -89,6 +106,23 @@ function normalizeHost(host) {
     .trim()
     .toLowerCase()
     .replace(/:\d+$/, "");
+}
+
+function readRequestBody(request) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+
+    request.on("data", (chunk) => {
+      body += chunk.toString("utf8");
+
+      if (body.length > 10_000) {
+        reject(new Error("Request body too large"));
+      }
+    });
+
+    request.on("end", () => resolve(body));
+    request.on("error", reject);
+  });
 }
 
 function readJsonFile(filePath) {
@@ -222,7 +256,7 @@ async function buildGallerySummary(gallery) {
       ...gallery,
       imageCount: imageFiles.length,
       coverUrl,
-      entryUrl: `/g/${encodeURIComponent(gallery.slug)}`,
+      entryUrl: getEntryUrl(gallery),
       galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`
     };
   } catch (error) {
@@ -230,7 +264,7 @@ async function buildGallerySummary(gallery) {
       ...gallery,
       imageCount: 0,
       coverUrl: "/assets/capa-serra.svg",
-      entryUrl: `/g/${encodeURIComponent(gallery.slug)}`,
+      entryUrl: getEntryUrl(gallery),
       galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`
     };
   }
@@ -248,7 +282,7 @@ async function buildGalleryDetail(gallery) {
   return {
     ...gallery,
     coverUrl,
-    entryUrl: `/g/${encodeURIComponent(gallery.slug)}`,
+    entryUrl: getEntryUrl(gallery),
     galleryUrl: `/gallery/${encodeURIComponent(gallery.slug)}`,
     images: {
       thumbnailsPath: `${gallery.sourcePath}/images/thumbnails`,
@@ -260,14 +294,26 @@ async function buildGalleryDetail(gallery) {
 }
 
 function renderEntryPage(gallery) {
-  const actionText = gallery.isPrivate
-    ? "Acesso protegido a esta galeria"
-    : "Entrar na galeria";
-  const noteText = gallery.isPrivate
-    ? "A estrutura de acesso protegido esta preparada, mas a senha ainda nao foi implementada."
-    : "Esta galeria esta sinalizada como publica e segue para a experiencia final.";
   const statusText = gallery.isPrivate ? "Privada" : "Publica";
-  const actionClass = gallery.isPrivate ? "entry-action entry-action--private" : "entry-action";
+  const hasPasswordError = gallery.accessError === "invalid-password";
+  const privateAccessMarkup = `
+          <form class="entry-form" method="POST" action="/access/${encodeURIComponent(gallery.slug)}">
+            <label class="entry-label" for="gallery-password">Senha</label>
+            <input
+              class="entry-input"
+              id="gallery-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            >
+            ${hasPasswordError ? '<p class="entry-error">Senha incorreta. Tente novamente.</p>' : ""}
+            <button class="entry-action entry-action--private" type="submit">Acessar galeria</button>
+          </form>
+          <p class="entry-note">Esta galeria e privada. O controle atual usa verificacao simples por senha, sem sessao persistente.</p>`;
+  const publicAccessMarkup = `
+          <a class="entry-action" href="${escapeHtml(gallery.galleryUrl)}">Entrar na galeria</a>
+          <p class="entry-note">Esta galeria esta sinalizada como publica e segue para a experiencia final.</p>`;
 
   return `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -289,8 +335,7 @@ function renderEntryPage(gallery) {
           <h1>${escapeHtml(gallery.title)}</h1>
           <span class="entry-status">${escapeHtml(statusText)}</span>
           <p>${escapeHtml(gallery.description || "Galeria sem descricao cadastrada.")}</p>
-          <a class="${actionClass}" href="${escapeHtml(gallery.galleryUrl)}">${escapeHtml(actionText)}</a>
-          <p class="entry-note">${escapeHtml(noteText)}</p>
+          ${gallery.isPrivate ? privateAccessMarkup : publicAccessMarkup}
         </div>
       </section>
     </main>
@@ -486,6 +531,7 @@ async function handlePageRequest(requestUrl, response, domainContext) {
     }
 
     const detail = await buildGalleryDetail(gallery);
+    detail.accessError = requestUrl.searchParams.get("error") || "";
     sendText(response, 200, renderEntryPage(detail), "text/html; charset=utf-8");
     return true;
   }
@@ -496,6 +542,11 @@ async function handlePageRequest(requestUrl, response, domainContext) {
 
     if (!gallery) {
       sendNotFound(response);
+      return true;
+    }
+
+    if (gallery.isPrivate && requestUrl.searchParams.get("access") !== "granted") {
+      redirect(response, getEntryUrl(gallery));
       return true;
     }
 
@@ -510,6 +561,38 @@ async function handlePageRequest(requestUrl, response, domainContext) {
   }
 
   return false;
+}
+
+async function handleAccessRequest(requestUrl, request, response, domainContext) {
+  if (request.method !== "POST" || !requestUrl.pathname.startsWith("/access/")) {
+    return false;
+  }
+
+  const slug = decodeURIComponent(requestUrl.pathname.replace("/access/", ""));
+  const gallery = await findGalleryBySlug(slug, domainContext);
+
+  if (!gallery) {
+    sendNotFound(response);
+    return true;
+  }
+
+  if (!gallery.isPrivate) {
+    redirect(response, gallery.galleryUrl);
+    return true;
+  }
+
+  const rawBody = await readRequestBody(request);
+  const formData = new URLSearchParams(rawBody);
+  const submittedPassword = formData.get("password") || "";
+  const expectedPassword = gallery.password || "";
+
+  if (submittedPassword && submittedPassword === expectedPassword) {
+    redirect(response, `${gallery.galleryUrl}?access=granted`);
+    return true;
+  }
+
+  redirect(response, getEntryUrl(gallery, "invalid-password"));
+  return true;
 }
 
 async function handleMediaRequest(requestUrl, response, domainContext) {
@@ -576,6 +659,13 @@ async function handleMediaRequest(requestUrl, response, domainContext) {
 }
 
 async function handleRequest(request, response) {
+  const requestUrl = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  const domainContext = await resolveDomainContext(request);
+
+  if (await handleAccessRequest(requestUrl, request, response, domainContext)) {
+    return;
+  }
+
   if (request.method !== "GET") {
     sendJson(response, 405, {
       status: "error",
@@ -583,9 +673,6 @@ async function handleRequest(request, response) {
     });
     return;
   }
-
-  const requestUrl = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
-  const domainContext = await resolveDomainContext(request);
 
   if (await handleApiRequest(requestUrl, response, domainContext)) {
     return;
@@ -639,10 +726,17 @@ async function handleRequest(request, response) {
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
     const isClientError = error.message === "Invalid gallery source path";
+    const isBodyTooLarge = error.message === "Request body too large";
     const isConfigError = error.message === "No configured domains";
-    const statusCode = isClientError ? 400 : 500;
+    const statusCode = isClientError
+      ? 400
+      : isBodyTooLarge
+        ? 413
+        : 500;
     const message = isClientError
       ? "Invalid gallery source path"
+      : isBodyTooLarge
+        ? "Request body too large"
       : isConfigError
         ? "No configured domains"
         : "Internal server error";
