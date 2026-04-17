@@ -971,6 +971,39 @@ async function handleApiRequest(requestUrl, response, domainContext) {
     return true;
   }
 
+  if (requestUrl.pathname === "/api/gallery-download") {
+    const requestedSlug = String(requestUrl.searchParams.get("slug") || "").trim();
+
+    if (!requestedSlug) {
+      sendJson(response, 400, {
+        status: "error",
+        message: "Missing slug parameter"
+      });
+      return true;
+    }
+
+    const gallery = await findGalleryBySlug(requestedSlug, domainContext);
+
+    if (!gallery) {
+      sendNotFound(response);
+      return true;
+    }
+
+    const imageFiles = await listConsistentImageFiles(gallery.sourcePath);
+    const normalizedPaths = normalizeImportPaths(gallery);
+    const payload = {
+      slug: gallery.slug,
+      total: imageFiles.length,
+      files: imageFiles.map((fileName) => ({
+        fileName,
+        url: `/${normalizedPaths.largePathNormalized}/${encodeURIComponent(fileName)}`
+      }))
+    };
+
+    sendJson(response, 200, payload);
+    return true;
+  }
+
   if (requestUrl.pathname.startsWith("/api/gallery/")) {
     const slug = decodeURIComponent(requestUrl.pathname.replace("/api/gallery/", ""));
     const gallery = await findGalleryBySlug(slug, domainContext);
