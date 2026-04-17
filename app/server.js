@@ -7,6 +7,7 @@ const port = Number(process.env.APP_PORT || process.env.PORT || 3000);
 const appRoot = __dirname;
 const repoRoot = path.resolve(appRoot, "..");
 const galleriesFilePath = path.join(appRoot, "data", "galleries.json");
+const domainsFilePath = path.join(appRoot, "data", "domains.json");
 const imageExtensions = new Set([".jpg", ".jpeg", ".png", ".webp", ".avif"]);
 const cssFilePath = path.join(appRoot, "styles.css");
 const indexFilePath = path.join(appRoot, "index.html");
@@ -61,6 +62,13 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function normalizeHost(host) {
+  return String(host || "")
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "");
 }
 
 function readJsonFile(filePath) {
@@ -125,9 +133,48 @@ async function loadGalleries() {
   return readJsonFile(galleriesFilePath);
 }
 
-async function findGalleryBySlug(slug) {
+async function loadDomains() {
+  return readJsonFile(domainsFilePath);
+}
+
+function filterGalleriesByCatalog(galleries, domainContext) {
+  return galleries.filter((item) => item.catalog === domainContext.catalog);
+}
+
+function selectFallbackDomain(domains, galleries) {
+  for (const domain of domains) {
+    if (galleries.some((gallery) => gallery.catalog === domain.catalog)) {
+      return domain;
+    }
+  }
+
+  return domains[0] || null;
+}
+
+async function resolveDomainContext(request) {
+  const [domains, galleries] = await Promise.all([
+    loadDomains(),
+    loadGalleries()
+  ]);
+  const requestedHost = normalizeHost(request.headers.host);
+  const matchedDomain = domains.find((item) => normalizeHost(item.domain) === requestedHost);
+  const activeDomain = matchedDomain || selectFallbackDomain(domains, galleries);
+
+  if (!activeDomain) {
+    throw new Error("No configured domains");
+  }
+
+  return {
+    ...activeDomain,
+    requestedHost,
+    isFallback: !matchedDomain
+  };
+}
+
+async function findGalleryBySlug(slug, domainContext) {
   const galleries = await loadGalleries();
-  return galleries.find((item) => item.slug === slug) || null;
+  return filterGalleriesByCatalog(galleries, domainContext)
+    .find((item) => item.slug === slug) || null;
 }
 
 async function getCoverUrl(gallery) {
@@ -206,7 +253,7 @@ function renderEntryPage(gallery) {
   </head>
   <body>
     <main class="entry-page">
-      <a class="entry-back" href="/">Voltar para a vitrine</a>
+      <a class="entry-back" href="/vitrine">Voltar para a vitrine</a>
       <section class="entry-hero">
         <div class="entry-cover">
           <img src="${escapeHtml(gallery.coverUrl)}" alt="Capa da galeria ${escapeHtml(gallery.title)}">
@@ -247,19 +294,60 @@ function renderGalleryPlaceholderPage(gallery) {
 </html>`;
 }
 
-async function handleApiRequest(requestUrl, response) {
+function renderHomePage(domainContext) {
+  const fallbackMessage = domainContext.isFallback
+    ? `<p class="home-fallback">Host desconhecido. Usando fallback seguro para ${escapeHtml(domainContext.name)}.</p>`
+    : "";
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${escapeHtml(domainContext.name)} | Gallery Platform</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="home-page">
+      <section class="home-panel">
+        <p class="eyebrow">Home do dominio</p>
+        <h1>${escapeHtml(domainContext.name)}</h1>
+        <p>Esta e a home local do dominio ${escapeHtml(domainContext.domain)}. O mesmo motor de aplicacao atende dominios diferentes e filtra a vitrine pelo catalogo configurado.</p>
+        ${fallbackMessage}
+        <div class="home-actions">
+          <a class="home-action" href="/vitrine">Abrir vitrine</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`;
+}
+
+function renderVitrineTemplate(domainContext) {
+  return fs.readFileSync(indexFilePath, "utf8")
+    .replaceAll("__DOMAIN_NAME__", escapeHtml(domainContext.name));
+}
+
+async function handleApiRequest(requestUrl, response, domainContext) {
   if (requestUrl.pathname === "/api/galleries") {
-    const galleries = await loadGalleries();
+    const galleries = filterGalleriesByCatalog(await loadGalleries(), domainContext);
     const payload = await Promise.all(galleries.map(buildGallerySummary));
 
-    sendJson(response, 200, payload);
+    sendJson(response, 200, {
+      domain: {
+        domain: domainContext.domain,
+        name: domainContext.name,
+        catalog: domainContext.catalog,
+        isFallback: domainContext.isFallback
+      },
+      galleries: payload
+    });
     return true;
   }
 
   if (requestUrl.pathname.startsWith("/api/gallery/")) {
     const slug = decodeURIComponent(requestUrl.pathname.replace("/api/gallery/", ""));
-    const galleries = await loadGalleries();
-    const gallery = galleries.find((item) => item.slug === slug);
+    const gallery = await findGalleryBySlug(slug, domainContext);
 
     if (!gallery) {
       sendNotFound(response);
@@ -274,10 +362,25 @@ async function handleApiRequest(requestUrl, response) {
   return false;
 }
 
-async function handlePageRequest(requestUrl, response) {
+async function handlePageRequest(requestUrl, response, domainContext) {
+  if (requestUrl.pathname === "/") {
+    sendText(response, 200, renderHomePage(domainContext), "text/html; charset=utf-8");
+    return true;
+  }
+
+  if (requestUrl.pathname === "/vitrine") {
+    sendText(
+      response,
+      200,
+      renderVitrineTemplate(domainContext),
+      "text/html; charset=utf-8"
+    );
+    return true;
+  }
+
   if (requestUrl.pathname.startsWith("/g/")) {
     const slug = decodeURIComponent(requestUrl.pathname.replace("/g/", ""));
-    const gallery = await findGalleryBySlug(slug);
+    const gallery = await findGalleryBySlug(slug, domainContext);
 
     if (!gallery) {
       sendNotFound(response);
@@ -291,7 +394,7 @@ async function handlePageRequest(requestUrl, response) {
 
   if (requestUrl.pathname.startsWith("/gallery/")) {
     const slug = decodeURIComponent(requestUrl.pathname.replace("/gallery/", ""));
-    const gallery = await findGalleryBySlug(slug);
+    const gallery = await findGalleryBySlug(slug, domainContext);
 
     if (!gallery) {
       sendNotFound(response);
@@ -311,7 +414,7 @@ async function handlePageRequest(requestUrl, response) {
   return false;
 }
 
-async function handleMediaRequest(requestUrl, response) {
+async function handleMediaRequest(requestUrl, response, domainContext) {
   if (!requestUrl.pathname.startsWith("/media/")) {
     return false;
   }
@@ -325,7 +428,7 @@ async function handleMediaRequest(requestUrl, response) {
 
   const slug = decodeURIComponent(mediaParts[1]);
   const fileName = decodeURIComponent(mediaParts[2]);
-  const gallery = await findGalleryBySlug(slug);
+  const gallery = await findGalleryBySlug(slug, domainContext);
 
   if (!gallery) {
     sendNotFound(response);
@@ -361,21 +464,17 @@ async function handleRequest(request, response) {
   }
 
   const requestUrl = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
+  const domainContext = await resolveDomainContext(request);
 
-  if (await handleApiRequest(requestUrl, response)) {
+  if (await handleApiRequest(requestUrl, response, domainContext)) {
     return;
   }
 
-  if (await handlePageRequest(requestUrl, response)) {
+  if (await handlePageRequest(requestUrl, response, domainContext)) {
     return;
   }
 
-  if (await handleMediaRequest(requestUrl, response)) {
-    return;
-  }
-
-  if (requestUrl.pathname === "/") {
-    sendFile(response, indexFilePath, "text/html; charset=utf-8");
+  if (await handleMediaRequest(requestUrl, response, domainContext)) {
     return;
   }
 
@@ -418,10 +517,14 @@ async function handleRequest(request, response) {
 
 const server = http.createServer((request, response) => {
   handleRequest(request, response).catch((error) => {
-    const statusCode = error.message === "Invalid gallery source path" ? 400 : 500;
-    const message = statusCode === 400
+    const isClientError = error.message === "Invalid gallery source path";
+    const isConfigError = error.message === "No configured domains";
+    const statusCode = isClientError ? 400 : 500;
+    const message = isClientError
       ? "Invalid gallery source path"
-      : "Internal server error";
+      : isConfigError
+        ? "No configured domains"
+        : "Internal server error";
 
     sendJson(response, statusCode, {
       status: "error",

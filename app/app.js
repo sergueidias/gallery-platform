@@ -53,7 +53,7 @@ function renderGalleryCards(galleries) {
           <div class="cover-shell cover-shell--placeholder"></div>
           <span class="cover-title">Nenhuma galeria cadastrada</span>
           <span class="cover-description">
-            Adicione itens em app/data/galleries.json para alimentar a vitrine.
+            Adicione itens com o catalogo correto em app/data/galleries.json para alimentar esta vitrine.
           </span>
         </div>
       </article>
@@ -86,7 +86,8 @@ function renderGalleryError() {
 
 async function initGalleryShowcase() {
   try {
-    const galleries = await loadGalleryCatalog();
+    const payload = await loadGalleryCatalog();
+    const galleries = Array.isArray(payload) ? payload : payload.galleries;
     renderGalleryCards(galleries);
   } catch (error) {
     renderGalleryError();

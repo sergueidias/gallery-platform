@@ -37,6 +37,62 @@ img {
   padding: 24px 16px 48px;
 }
 
+.home-page {
+  width: min(100%, 860px);
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.home-panel {
+  padding: 28px;
+  border: 1px solid rgba(216, 201, 181, 0.9);
+  border-radius: calc(var(--radius-lg) + 4px);
+  background: rgba(255, 250, 242, 0.82);
+  box-shadow: var(--shadow);
+}
+
+.home-panel h1 {
+  margin: 0;
+  font-size: clamp(2.3rem, 8vw, 4.2rem);
+  line-height: 0.95;
+}
+
+.home-panel p {
+  margin: 16px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 26px;
+}
+
+.home-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 220px;
+  padding: 14px 18px;
+  border-radius: 999px;
+  background: #2f241d;
+  color: #fff8ef;
+  text-decoration: none;
+  box-shadow: 0 16px 28px rgba(43, 30, 19, 0.18);
+}
+
+.home-fallback {
+  display: inline-flex;
+  margin-top: 18px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(82, 67, 52, 0.09);
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
 .hero {
   padding: 24px 0 12px;
 }
@@ -299,6 +355,10 @@ img {
 @media (min-width: 700px) {
   .page {
     padding: 40px 24px 72px;
+  }
+
+  .home-page {
+    padding: 44px 24px 80px;
   }
 
   .showcase {
