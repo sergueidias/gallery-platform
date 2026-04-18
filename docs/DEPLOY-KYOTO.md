@@ -190,6 +190,97 @@ curl: (7) Failed to connect to 127.0.0.1 port 3000
 
 ---
 
+## Etapa 8 - Patch de sourcePath
+
+### Problema
+
+A aplicacao subia localmente, mas a rota detalhada da galeria falhava com:
+
+```text
+{"status":"error","message":"Invalid gallery source path"}
+```
+
+### Acoes executadas
+
+- backup criado em `/opt/gallery-platform/app/server.js.bak`
+- inspecao do ponto onde `Invalid gallery source path` era emitido
+- ajuste da resolucao de `sourcePath` para validacao pelo caminho final dentro de `repoRoot`
+- normalizacao dos paths expostos pela API para o formato relativo a raiz do repositorio
+
+### Correcao aplicada
+
+- `resolveGallerySourcePath()` deixou de exigir prefixo fixo em `repoRoot/data`
+- a validacao passou a aceitar caminhos cujo destino final permaneça dentro de `/opt/gallery-platform`
+- o caso legado atual com `../data/imports/...` passou a ser resolvido com seguranca, sem permitir escape fora do repositorio
+- `sourcePath`, `thumbnailsPath` e `largePath` passaram a ser retornados como `data/...`
+
+### Resultado validado
+
+- `/api/galleries` continuou respondendo JSON
+- `/api/gallery/nude-armchair` deixou de retornar `Invalid gallery source path`
+- a resposta detalhada da galeria passou a retornar:
+  - `sourcePath: data/imports/default/nude-armchair`
+  - `images.thumbnailsPath: data/imports/default/nude-armchair/images/thumbnails`
+  - `images.largePath: data/imports/default/nude-armchair/images/large`
+- nenhuma alteracao em infraestrutura
+
+### Evidencia
+
+A aplicacao respondeu normalmente nas duas rotas locais, com o erro migrando da validacao de path para a ausencia de imagens validas.
+
+### Novo estado observado
+
+- `coverStatus: error_cover_file_missing`
+- `galleryStatus: error_no_images`
+- `imageCount: 0`
+
+### Leitura tecnica
+
+A camada de runtime e resolucao de paths esta funcional. O bloqueio atual passou a ser a camada de import e reconhecimento das imagens.
+
+---
+
+## Etapa 9 - Diagnostico de imagens
+
+### Resultado
+
+O erro atual nao esta mais na aplicacao nem na infraestrutura. O slug `nude-armchair` nao possui imagens validas importadas.
+
+### Evidencia
+
+Os unicos arquivos encontrados em:
+
+- `images/`
+- `images/large/`
+- `images/thumbnails/`
+
+foram arquivos `.gitkeep`.
+
+### Regra de validacao confirmada
+
+A aplicacao so aceita:
+
+- `.jpg`
+- `.jpeg`
+- `.png`
+- `.webp`
+- `.avif`
+
+Além disso, exige pares consistentes com o mesmo nome em:
+
+- `images/thumbnails`
+- `images/large`
+
+### Leitura tecnica
+
+O estado `error_no_images` esta correto e corresponde ao conteudo real em disco.
+
+### Decisao
+
+Nao avancar para persistencia do processo antes de validar a leitura da galeria com ao menos um par real de imagens.
+
+---
+
 ## Conclusao operacional
 
 O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado, ambos de forma reversivel e com backup. O bloqueio inicial para subir a aplicacao nao estava no catalogo nem no path do import: o impedimento imediato era a ausencia de `node` e `npm` no servidor. Com a instalacao do runtime, esse bloqueio foi removido.
@@ -201,7 +292,7 @@ O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado
 | Codigo sincronizado | ✅ |
 | sourcePath correto | ✅ |
 | .env configurado | ✅ |
-| App executa localmente | ❌ |
+| App executa localmente | ✅ |
 | Runtime Node | ✅ |
 | PM2 / daemon | ❌ |
 | Nginx (gallery) | ❌ |
