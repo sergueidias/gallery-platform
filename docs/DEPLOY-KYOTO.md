@@ -171,6 +171,25 @@ O servidor passou a ter runtime suficiente para executar o `gallery-platform` lo
 
 ---
 
+## Etapa 5 - Primeira tentativa de execucao local
+
+### Resultado
+
+- runtime Node funcional
+- tentativa de `npm install` falhou por ausencia de `package.json` em `/opt/gallery-platform`
+- aplicacao nao respondeu em `127.0.0.1:3000`
+- processo de teste nao permaneceu ativo
+- log de teste nao trouxe erro util
+
+### Erro observado
+
+```text
+npm ERR! enoent Could not read package.json: Error: ENOENT: no such file or directory, open '/opt/gallery-platform/package.json'
+curl: (7) Failed to connect to 127.0.0.1 port 3000
+```
+
+---
+
 ## Conclusao operacional
 
 O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado, ambos de forma reversivel e com backup. O bloqueio inicial para subir a aplicacao nao estava no catalogo nem no path do import: o impedimento imediato era a ausencia de `node` e `npm` no servidor. Com a instalacao do runtime, esse bloqueio foi removido.
@@ -182,7 +201,7 @@ O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado
 | Codigo sincronizado | ✅ |
 | sourcePath correto | ✅ |
 | .env configurado | ✅ |
-| App executa localmente | ⏳ |
+| App executa localmente | ❌ |
 | Runtime Node | ✅ |
 | PM2 / daemon | ❌ |
 | Nginx (gallery) | ❌ |
