@@ -146,9 +146,34 @@ Estado final:
 
 ---
 
+## Etapa 4 - Runtime Node instalado
+
+### Resultado
+
+- `node` instalado e funcional
+- `npm` instalado e funcional
+- caminhos confirmados:
+  - `/usr/bin/node`
+  - `/usr/bin/npm`
+
+### Versoes finais
+
+- Node.js: `v24.14.1`
+- npm: `11.11.0`
+
+### Observacao tecnica
+
+A instalacao pretendia runtime LTS, mas o repositorio configurado levou ao canal `node_24.x`. O ambiente ficou funcional, porem essa escolha deve ser reavaliada antes da estabilizacao final em producao.
+
+### Impacto
+
+O servidor passou a ter runtime suficiente para executar o `gallery-platform` localmente.
+
+---
+
 ## Conclusao operacional
 
-O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado, ambos de forma reversivel e com backup. O bloqueio atual para subir a aplicacao nao esta no catalogo nem no path do import: o impedimento imediato e a ausencia de `node` e `npm` no servidor.
+O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado, ambos de forma reversivel e com backup. O bloqueio inicial para subir a aplicacao nao estava no catalogo nem no path do import: o impedimento imediato era a ausencia de `node` e `npm` no servidor. Com a instalacao do runtime, esse bloqueio foi removido.
 
 ## Estado atual do deploy
 
@@ -158,6 +183,7 @@ O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado
 | sourcePath correto | ✅ |
 | .env configurado | ✅ |
 | App executa localmente | ⏳ |
+| Runtime Node | ✅ |
 | PM2 / daemon | ❌ |
 | Nginx (gallery) | ❌ |
 | DNS gallery | ❌ |
@@ -174,4 +200,4 @@ O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado
 
 Parar para revisao humana antes de qualquer passo maior.
 
-Se a proxima etapa for autorizada, ela deve focar primeiro em definir como o runtime Node sera disponibilizado no servidor KYOTO. Depois disso, as etapas de daemon, `nginx`, `dns` e `ssl` podem ser tratadas separadamente, sem misturar escopos.
+Se a proxima etapa for autorizada, ela deve focar em validar a execucao local do app com o runtime agora disponivel. Depois disso, as etapas de daemon, `nginx`, `dns` e `ssl` podem ser tratadas separadamente, sem misturar escopos.
