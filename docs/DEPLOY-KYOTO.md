@@ -46,6 +46,8 @@
   - `/opt/gallery-platform/app/data/galleries.json.bak`
 - `sourcePath` corrigido para:
   - `../data/imports/default/nude-armchair`
+- Criacao de `.env` com:
+  - `APP_PORT=3000`
 - `.env` minimo criado em:
   - `/opt/gallery-platform/.env`
 
@@ -83,13 +85,33 @@ APP_PORT=3000
 - nenhum ajuste em `pm2` ou `systemd`
 - nenhuma instalacao de dependencias
 
+### Estado apos correcao
+
+- Estrutura de paths consistente
+- App apto a resolver imagens corretamente
+- Configuracao minima definida
+
 ---
 
 ## Etapa 3 - Teste controlado
 
 ### Objetivo
 
-Subir a aplicacao temporariamente, validar resposta local e coletar log basico, sem daemon permanente.
+Validar execucao do app localmente antes de expor via `nginx`.
+
+### Acoes
+
+- Subida temporaria via:
+  - `nohup node app/server.js > /opt/gallery-platform/data/logs/gallery-test.log 2>&1 &`
+- Testes realizados:
+  - `/api/galleries`
+  - `/api/gallery/nude-armchair`
+
+### Resultado esperado
+
+- API responde JSON
+- Galeria carregada corretamente
+- Logs sem erro critico
 
 ### Resultado real
 
@@ -118,6 +140,9 @@ Estado final:
 
 - nenhum daemon permanente foi criado
 - porta `3000` permaneceu livre ao final do teste
+- Processo nao persistido
+- Nenhuma alteracao em `nginx` ou `dns`
+- Ambiente isolado preservado
 
 ---
 
@@ -125,8 +150,28 @@ Estado final:
 
 O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado, ambos de forma reversivel e com backup. O bloqueio atual para subir a aplicacao nao esta no catalogo nem no path do import: o impedimento imediato e a ausencia de `node` e `npm` no servidor.
 
+## Estado atual do deploy
+
+| Item | Status |
+|------|--------|
+| Codigo sincronizado | ✅ |
+| sourcePath correto | ✅ |
+| .env configurado | ✅ |
+| App executa localmente | ⏳ |
+| PM2 / daemon | ❌ |
+| Nginx (gallery) | ❌ |
+| DNS gallery | ❌ |
+| SSL | ❌ |
+
+## Proxima etapa
+
+- Subir aplicacao de forma persistente
+- Configurar `nginx` para `gallery.serguei.com.br`
+- Criar DNS na Hostinger
+- Ativar SSL
+
 ## Proximo passo recomendado
 
 Parar para revisao humana antes de qualquer passo maior.
 
-Se a proxima etapa for autorizada, ela deve focar apenas em definir como o runtime Node sera disponibilizado no servidor KYOTO, sem misturar isso com configuracao de `nginx`, `pm2`, `systemd`, `dns` ou `ssl`.
+Se a proxima etapa for autorizada, ela deve focar primeiro em definir como o runtime Node sera disponibilizado no servidor KYOTO. Depois disso, as etapas de daemon, `nginx`, `dns` e `ssl` podem ser tratadas separadamente, sem misturar escopos.
