@@ -311,3 +311,66 @@ O repositorio em KYOTO ficou com o catalogo corrigido e com `.env` minimo criado
 Parar para revisao humana antes de qualquer passo maior.
 
 Se a proxima etapa for autorizada, ela deve focar em validar a execucao local do app com o runtime agora disponivel. Depois disso, as etapas de daemon, `nginx`, `dns` e `ssl` podem ser tratadas separadamente, sem misturar escopos.
+
+---
+
+## Etapa 11 - Estado anterior ao proxy reverso
+
+### Estado validado
+
+- runtime Node instalado e funcional
+- `.env` minimo criado com `APP_PORT=3000`
+- `sourcePath` corrigido e validacao interna ajustada
+- app sobe corretamente no KYOTO
+- leitura da galeria validada com imagem real de teste
+- `GET /api/galleries` responde `200 OK`
+- `GET /api/gallery/:slug` responde `200 OK`
+- `imageCount > 0` validado
+- processo ja persistido via `PM2`
+- proxima etapa operacional: `nginx`
+
+### Leitura tecnica
+
+O sistema saiu do estado de validacao puramente local e ja possui backend funcional persistente no KYOTO. A publicacao publica ainda depende da camada de proxy reverso, do apontamento de `DNS` e da emissao de `SSL`.
+
+---
+
+## Etapa 12 - Estado apos Nginx manual e persistencia
+
+### Registro operacional
+
+- `sourcePath` corrigido no app
+- `.env` criado com `APP_PORT=3000`
+- Node instalado e funcional no servidor
+- app validado localmente na porta `3000`
+- correcao da validacao de `sourcePath` aplicada no `server.js`
+- inexistencia inicial de imagens validas no slug `nude-armchair`
+- inclusao manual de imagem de teste em `large/` e `thumbnails/`
+- `galleryStatus` passou para `ok`
+- `imageCount` passou para `1`
+- `nginx` aplicado manualmente no VPS fora do escopo deste repositorio
+- arquivo criado em `/etc/nginx/sites-available/gallery-platform`
+- symlink ativado em `/etc/nginx/sites-enabled/gallery-platform`
+- `nginx -t` validado com sucesso
+- `systemctl reload nginx` executado com sucesso
+- validacao via `Host` header funcionando
+- `PM2` instalado globalmente no servidor
+- processo duplicado criado por engano em `PM2` (`gallery` e `gallery-platform`)
+- conflito de porta causado pela segunda instancia
+- correcao operacional: manter apenas `gallery-platform`
+- estado atual: app funcional, API funcional, `nginx` funcional, `PM2` funcional
+- capa ainda em fallback por ausencia de arquivo de capa compativel
+
+### Leitura tecnica
+
+O deploy no KYOTO saiu do estado de validacao somente local e passou a ter backend funcional persistente com encaminhamento por proxy reverso. A publicacao publica completa ainda depende da camada externa de `DNS` e da emissao/configuracao de `SSL`.
+
+### Nota final
+
+- o deploy esta funcional no estagio atual
+- pendencias remanescentes:
+  - resolver capa
+  - `DNS` publico final
+  - `SSL` final
+  - refinar ingestao
+- migracao futura para outro servidor e viavel porque a aplicacao esta desacoplada de banco e containers, mas depende da copia de `data/imports`, `.env`, `PM2` e do bloco de `nginx`
