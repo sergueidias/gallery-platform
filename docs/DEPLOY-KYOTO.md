@@ -326,7 +326,7 @@ Se a proxima etapa for autorizada, ela deve focar em validar a execucao local do
 - `GET /api/galleries` responde `200 OK`
 - `GET /api/gallery/:slug` responde `200 OK`
 - `imageCount > 0` validado
-- processo ja persistido via `PM2`
+- processo ja persistido via `PM2` (instancia unica: `gallery-platform`)
 - proxima etapa operacional: `nginx`
 
 ### Leitura tecnica
@@ -357,8 +357,13 @@ O sistema saiu do estado de validacao puramente local e ja possui backend funcio
 - `PM2` instalado globalmente no servidor
 - processo duplicado criado por engano em `PM2` (`gallery` e `gallery-platform`)
 - conflito de porta causado pela segunda instancia
-- correcao operacional: manter apenas `gallery-platform`
-- estado atual: app funcional, API funcional, `nginx` funcional, `PM2` funcional
+- correcao aplicada: remocao de `gallery`
+- estado final: manter apenas `gallery-platform` como instancia unica no `PM2`
+- `gallery-platform` online
+- API funcional
+- `imageCount: 1`
+- `nginx` funcional
+- `PM2` funcional
 - capa ainda em fallback por ausencia de arquivo de capa compativel
 
 ### Leitura tecnica
