@@ -11,7 +11,12 @@
   },
   {
     "domain": "yukistudio.com",
-    "name": "Yuki Studio",
+    "name": "YUK Studio",
+    "catalog": "yuki"
+  },
+  {
+    "domain": "gallery.serguei.com.br",
+    "name": "YUK Studio",
     "catalog": "yuki"
   }
 ]
