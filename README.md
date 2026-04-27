@@ -61,3 +61,18 @@ O sistema extrai do export:
 
 Documentação técnica completa em `docs/` — 36 arquivos cobrindo
 todos os blocos de implementação.
+
+## Utilitário Dataroom
+
+O repositório inclui um gerador declarativo de dataroom:
+
+- `structure.json` define a hierarquia de pastas
+- `create_drive_dataroom.py` cria as subpastas e um `README.md` em cada uma
+- `requirements.txt` documenta que não há dependências externas
+
+Exemplo de uso local:
+
+```bash
+python3 create_drive_dataroom.py --dry-run
+python3 create_drive_dataroom.py --target-dir ./tmp-dataroom --report-file ./tmp-dataroom-report.json
+```

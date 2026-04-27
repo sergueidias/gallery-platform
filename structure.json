@@ -1,0 +1,134 @@
+{
+  "name": "dataroom",
+  "title": "Dataroom",
+  "description": "Estrutura base de dataroom para organizacao de documentos operacionais, financeiros, juridicos e comerciais.",
+  "children": [
+    {
+      "name": "01-visao-geral",
+      "title": "Visao Geral",
+      "description": "Documentos introdutorios, sumario executivo e contexto do projeto.",
+      "children": [
+        {
+          "name": "empresa",
+          "title": "Empresa",
+          "description": "Materiais institucionais, apresentacao da empresa e contexto operacional."
+        },
+        {
+          "name": "produto",
+          "title": "Produto",
+          "description": "Documentos sobre produto, proposta de valor e operacao do sistema."
+        }
+      ]
+    },
+    {
+      "name": "02-financeiro",
+      "title": "Financeiro",
+      "description": "Planilhas, relatorios e documentos relacionados a desempenho financeiro.",
+      "children": [
+        {
+          "name": "dre",
+          "title": "DRE",
+          "description": "Demonstrativos de resultado e visoes consolidadas."
+        },
+        {
+          "name": "fluxo-de-caixa",
+          "title": "Fluxo de Caixa",
+          "description": "Acompanhamento de entradas, saidas e previsoes."
+        },
+        {
+          "name": "faturamento",
+          "title": "Faturamento",
+          "description": "Documentos de receita, contratos faturados e historico de cobranca."
+        }
+      ]
+    },
+    {
+      "name": "03-juridico",
+      "title": "Juridico",
+      "description": "Contratos, documentos societarios e registros legais.",
+      "children": [
+        {
+          "name": "contratos",
+          "title": "Contratos",
+          "description": "Contratos com clientes, parceiros e fornecedores."
+        },
+        {
+          "name": "societario",
+          "title": "Societario",
+          "description": "Documentos de constituicao, alteracoes e governanca."
+        },
+        {
+          "name": "compliance",
+          "title": "Compliance",
+          "description": "Politicas internas, termos, riscos e registros de conformidade."
+        }
+      ]
+    },
+    {
+      "name": "04-operacao",
+      "title": "Operacao",
+      "description": "Processos, playbooks e artefatos necessarios para a execucao do negocio.",
+      "children": [
+        {
+          "name": "processos",
+          "title": "Processos",
+          "description": "Fluxos operacionais e instrucoes recorrentes."
+        },
+        {
+          "name": "fornecedores",
+          "title": "Fornecedores",
+          "description": "Cadastros, contratos e materiais de apoio de fornecedores."
+        },
+        {
+          "name": "seguranca",
+          "title": "Seguranca",
+          "description": "Controles, politicas e evidencias de seguranca operacional."
+        }
+      ]
+    },
+    {
+      "name": "05-comercial",
+      "title": "Comercial",
+      "description": "Pipeline comercial, clientes e materiais de vendas.",
+      "children": [
+        {
+          "name": "clientes",
+          "title": "Clientes",
+          "description": "Materiais por conta, propostas e historico comercial."
+        },
+        {
+          "name": "propostas",
+          "title": "Propostas",
+          "description": "Propostas enviadas, templates e versoes aprovadas."
+        },
+        {
+          "name": "materiais",
+          "title": "Materiais",
+          "description": "Apresentacoes, one-pagers e materiais de apoio comercial."
+        }
+      ]
+    },
+    {
+      "name": "06-tecnologia",
+      "title": "Tecnologia",
+      "description": "Arquitetura, acessos operacionais e documentacao tecnica.",
+      "children": [
+        {
+          "name": "arquitetura",
+          "title": "Arquitetura",
+          "description": "Diagramas, decisoes tecnicas e descricoes de componentes."
+        },
+        {
+          "name": "documentacao",
+          "title": "Documentacao",
+          "description": "Guias operacionais, notas tecnicas e historico de manutencao."
+        },
+        {
+          "name": "acessos",
+          "title": "Acessos",
+          "description": "Inventario de acessos e instrucoes de administracao."
+        }
+      ]
+    }
+  ]
+}
