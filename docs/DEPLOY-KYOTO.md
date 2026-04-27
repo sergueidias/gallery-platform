@@ -379,3 +379,24 @@ O deploy no KYOTO saiu do estado de validacao somente local e passou a ter backe
   - `SSL` final
   - refinar ingestao
 - migracao futura para outro servidor e viavel porque a aplicacao esta desacoplada de banco e containers, mas depende da copia de `data/imports`, `.env`, `PM2` e do bloco de `nginx`
+
+---
+
+## Etapa 13 - DNS publico e HTTPS
+
+### Registro operacional
+
+- `DNS` publico de `gallery.serguei.com.br` apontado para `76.13.174.156`
+- `certbot` executado com sucesso para `gallery.serguei.com.br`
+- certificado salvo em `/etc/letsencrypt/live/gallery.serguei.com.br/`
+- `HTTPS` habilitado no bloco `gallery-platform`
+- `curl -I` em `HTTPS` retornou `405` por uso de `HEAD`, indicando resposta da aplicacao atras do `nginx`
+
+### Estado atual
+
+- deploy publico funcional com `HTTPS`
+
+### Proximo passo
+
+- validacao funcional por `GET`
+- validacao final no navegador
